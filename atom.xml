@@ -84,7 +84,7 @@
     <link href="http://poning.me/2017/02/14/babypwn/"/>
     <id>http://poning.me/2017/02/14/babypwn/</id>
     <published>2017-02-14T06:56:04.000Z</published>
-    <updated>2017-02-14T06:56:04.000Z</updated>
+    <updated>2017-02-20T16:27:11.000Z</updated>
     
     <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
 <p>BabyPwn~~~<br><a href="/2017/02/14/babypwn/babypwn" title="http://ctf.codegate.org/z/babypwn">http://ctf.codegate.org/z/babypwn</a><br>nc 110.10.212.130 8888<br>nc 110.10.212.130 8889</p>
@@ -106,6 +106,9 @@
 <blockquote>
 <p>Flag: <code>FLAG{Good_Job~!Y0u_@re_Very__G@@d!!!!!!^.^}</code></p>
 </blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li>I spent some unnecessary work on finding the address of <code>system</code> because I didn’t see that <code>system</code> was already in the GOT table. It was deliberately put in the code that no one actually reference it. It was even used to <code>system(&quot;echo &#39;not easy to see&#39;&quot;)</code> to indicate this fact. </li>
+</ul>
 ]]></content>
     
     <summary type="html">
@@ -373,9 +376,9 @@
     
       <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
-    
       <category term="ROP" scheme="http://poning.me/tags/ROP/"/>
+    
+      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
     
   </entry>
   

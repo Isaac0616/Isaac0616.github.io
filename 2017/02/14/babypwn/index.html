@@ -18,6 +18,9 @@
 <blockquote>
 <p>Flag: <code>FLAG{Good_Job~!Y0u_@re_Very__G@@d!!!!!!^.^}</code></p>
 </blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li>I spent some unnecessary work on finding the address of <code>system</code> because I didn’t see that <code>system</code> was already in the GOT table. It was deliberately put in the code that no one actually reference it. It was even used to <code>system(&quot;echo &#39;not easy to see&#39;&quot;)</code> to indicate this fact. </li>
+</ul>
 </div><!-- comment system--><div class="container"><hr><div id="disqus_thread"></div><script type="text/javascript">
 var disqus_shortname = 'poning';
 var disqus_identifier = '2017/02/14/babypwn/';
