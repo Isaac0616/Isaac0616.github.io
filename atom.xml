@@ -4,9 +4,9 @@
   <subtitle>The force is with those who read the source.</subtitle>
   <link href="/atom.xml" rel="self"/>
   
-  <link href="http://poning.me/"/>
+  <link href="https://poning.me/"/>
   <updated>2017-03-11T06:02:36.000Z</updated>
-  <id>http://poning.me/</id>
+  <id>https://poning.me/</id>
   
   <author>
     <name>Isaac Tseng</name>
@@ -17,8 +17,8 @@
   
   <entry>
     <title>Codegate prequals 2017: meow (pwn 365)</title>
-    <link href="http://poning.me/2017/02/20/meow/"/>
-    <id>http://poning.me/2017/02/20/meow/</id>
+    <link href="https://poning.me/2017/02/20/meow/"/>
+    <id>https://poning.me/2017/02/20/meow/</id>
     <published>2017-02-20T15:35:57.000Z</published>
     <updated>2017-03-11T06:02:36.000Z</updated>
     
@@ -68,21 +68,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="Codegate prequals" scheme="http://poning.me/tags/Codegate-prequals/"/>
+      <category term="Codegate prequals" scheme="https://poning.me/tags/Codegate-prequals/"/>
     
-      <category term="reverse" scheme="http://poning.me/tags/reverse/"/>
+      <category term="reverse" scheme="https://poning.me/tags/reverse/"/>
     
   </entry>
   
   <entry>
     <title>Codegate prequals 2017: babypwn (pwn 50)</title>
-    <link href="http://poning.me/2017/02/14/babypwn/"/>
-    <id>http://poning.me/2017/02/14/babypwn/</id>
+    <link href="https://poning.me/2017/02/14/babypwn/"/>
+    <id>https://poning.me/2017/02/14/babypwn/</id>
     <published>2017-02-14T06:56:04.000Z</published>
     <updated>2017-02-20T16:27:11.000Z</updated>
     
@@ -118,19 +118,19 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="Codegate prequals" scheme="http://poning.me/tags/Codegate-prequals/"/>
+      <category term="Codegate prequals" scheme="https://poning.me/tags/Codegate-prequals/"/>
     
   </entry>
   
   <entry>
     <title>DefCamp CTF Finals 2016: SMS (pwn 200)</title>
-    <link href="http://poning.me/2016/12/05/SMS/"/>
-    <id>http://poning.me/2016/12/05/SMS/</id>
+    <link href="https://poning.me/2016/12/05/SMS/"/>
+    <id>https://poning.me/2016/12/05/SMS/</id>
     <published>2016-12-04T16:44:04.000Z</published>
     <updated>2016-12-06T02:44:18.000Z</updated>
     
@@ -163,19 +163,19 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="DefCamp CTF" scheme="http://poning.me/tags/DefCamp-CTF/"/>
+      <category term="DefCamp CTF" scheme="https://poning.me/tags/DefCamp-CTF/"/>
     
   </entry>
   
   <entry>
     <title>HITCON CTF 2016: Secret Holder (pwn 100)</title>
-    <link href="http://poning.me/2016/10/29/secret-holder/"/>
-    <id>http://poning.me/2016/10/29/secret-holder/</id>
+    <link href="https://poning.me/2016/10/29/secret-holder/"/>
+    <id>https://poning.me/2016/10/29/secret-holder/</id>
     <published>2016-10-29T12:46:05.000Z</published>
     <updated>2017-02-14T06:52:08.000Z</updated>
     
@@ -227,27 +227,27 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="HITCON CTF" scheme="http://poning.me/tags/HITCON-CTF/"/>
+      <category term="HITCON CTF" scheme="https://poning.me/tags/HITCON-CTF/"/>
     
-      <category term="heap" scheme="http://poning.me/tags/heap/"/>
+      <category term="heap" scheme="https://poning.me/tags/heap/"/>
     
-      <category term="unsafe unlink" scheme="http://poning.me/tags/unsafe-unlink/"/>
+      <category term="unsafe unlink" scheme="https://poning.me/tags/unsafe-unlink/"/>
     
-      <category term="use after free" scheme="http://poning.me/tags/use-after-free/"/>
+      <category term="use after free" scheme="https://poning.me/tags/use-after-free/"/>
     
-      <category term="GOT" scheme="http://poning.me/tags/GOT/"/>
+      <category term="GOT" scheme="https://poning.me/tags/GOT/"/>
     
   </entry>
   
   <entry>
     <title>D-CTF Quals 2016: My gift (Exploit 200)</title>
-    <link href="http://poning.me/2016/10/04/my-gift/"/>
-    <id>http://poning.me/2016/10/04/my-gift/</id>
+    <link href="https://poning.me/2016/10/04/my-gift/"/>
+    <id>https://poning.me/2016/10/04/my-gift/</id>
     <published>2016-10-04T11:08:36.000Z</published>
     <updated>2017-02-14T02:45:27.000Z</updated>
     
@@ -268,23 +268,23 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+      <category term="x86-64" scheme="https://poning.me/tags/x86-64/"/>
     
-      <category term="D-CTF Quals" scheme="http://poning.me/tags/D-CTF-Quals/"/>
+      <category term="D-CTF Quals" scheme="https://poning.me/tags/D-CTF-Quals/"/>
     
-      <category term="stack overflow" scheme="http://poning.me/tags/stack-overflow/"/>
+      <category term="stack overflow" scheme="https://poning.me/tags/stack-overflow/"/>
     
   </entry>
   
   <entry>
     <title>D-CTF Quals 2016: Warm heap (Exploit 100)</title>
-    <link href="http://poning.me/2016/10/04/warm-heap/"/>
-    <id>http://poning.me/2016/10/04/warm-heap/</id>
+    <link href="https://poning.me/2016/10/04/warm-heap/"/>
+    <id>https://poning.me/2016/10/04/warm-heap/</id>
     <published>2016-10-04T08:46:04.000Z</published>
     <updated>2017-02-14T02:45:32.000Z</updated>
     
@@ -306,25 +306,25 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+      <category term="x86-64" scheme="https://poning.me/tags/x86-64/"/>
     
-      <category term="D-CTF Quals" scheme="http://poning.me/tags/D-CTF-Quals/"/>
+      <category term="D-CTF Quals" scheme="https://poning.me/tags/D-CTF-Quals/"/>
     
-      <category term="GOT" scheme="http://poning.me/tags/GOT/"/>
+      <category term="GOT" scheme="https://poning.me/tags/GOT/"/>
     
-      <category term="heap overflow" scheme="http://poning.me/tags/heap-overflow/"/>
+      <category term="heap overflow" scheme="https://poning.me/tags/heap-overflow/"/>
     
   </entry>
   
   <entry>
     <title>CSAW CTF 2016: Tutorial (pwn 200)</title>
-    <link href="http://poning.me/2016/09/29/tutorial/"/>
-    <id>http://poning.me/2016/09/29/tutorial/</id>
+    <link href="https://poning.me/2016/09/29/tutorial/"/>
+    <id>https://poning.me/2016/09/29/tutorial/</id>
     <published>2016-09-28T17:01:39.000Z</published>
     <updated>2016-09-28T17:01:39.000Z</updated>
     
@@ -369,23 +369,23 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+      <category term="CSAW CTF" scheme="https://poning.me/tags/CSAW-CTF/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+      <category term="x86-64" scheme="https://poning.me/tags/x86-64/"/>
     
-      <category term="ROP" scheme="http://poning.me/tags/ROP/"/>
+      <category term="ROP" scheme="https://poning.me/tags/ROP/"/>
     
   </entry>
   
   <entry>
     <title>CSAW CTF 2016: Aul (pwn 100)</title>
-    <link href="http://poning.me/2016/09/20/aul/"/>
-    <id>http://poning.me/2016/09/20/aul/</id>
+    <link href="https://poning.me/2016/09/20/aul/"/>
+    <id>https://poning.me/2016/09/20/aul/</id>
     <published>2016-09-20T07:31:01.000Z</published>
     <updated>2016-09-20T07:31:35.000Z</updated>
     
@@ -410,21 +410,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="Lua" scheme="http://poning.me/tags/Lua/"/>
+      <category term="Lua" scheme="https://poning.me/tags/Lua/"/>
     
-      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+      <category term="CSAW CTF" scheme="https://poning.me/tags/CSAW-CTF/"/>
     
   </entry>
   
   <entry>
     <title>CSAW CTF 2016: Warmup (pwn 50)</title>
-    <link href="http://poning.me/2016/09/20/warmup/"/>
-    <id>http://poning.me/2016/09/20/warmup/</id>
+    <link href="https://poning.me/2016/09/20/warmup/"/>
+    <id>https://poning.me/2016/09/20/warmup/</id>
     <published>2016-09-20T03:49:23.000Z</published>
     <updated>2016-09-21T03:01:00.000Z</updated>
     
@@ -446,21 +446,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="CSAW CTF" scheme="http://poning.me/tags/CSAW-CTF/"/>
+      <category term="CSAW CTF" scheme="https://poning.me/tags/CSAW-CTF/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+      <category term="x86-64" scheme="https://poning.me/tags/x86-64/"/>
     
   </entry>
   
   <entry>
     <title>Pwnable.kr: collision (3 pt)</title>
-    <link href="http://poning.me/2016/08/08/collision/"/>
-    <id>http://poning.me/2016/08/08/collision/</id>
+    <link href="https://poning.me/2016/08/08/collision/"/>
+    <id>https://poning.me/2016/08/08/collision/</id>
     <published>2016-08-08T13:24:12.000Z</published>
     <updated>2016-08-08T13:24:42.000Z</updated>
     
@@ -484,17 +484,17 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="Pwnable.kr" scheme="http://poning.me/tags/Pwnable-kr/"/>
+      <category term="Pwnable.kr" scheme="https://poning.me/tags/Pwnable-kr/"/>
     
   </entry>
   
   <entry>
     <title>Pwnable.kr: fd (1 pt)</title>
-    <link href="http://poning.me/2016/08/08/fd/"/>
-    <id>http://poning.me/2016/08/08/fd/</id>
+    <link href="https://poning.me/2016/08/08/fd/"/>
+    <id>https://poning.me/2016/08/08/fd/</id>
     <published>2016-08-08T06:50:37.000Z</published>
     <updated>2016-08-08T07:22:57.000Z</updated>
     
@@ -516,17 +516,17 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="Pwnable.kr" scheme="http://poning.me/tags/Pwnable-kr/"/>
+      <category term="Pwnable.kr" scheme="https://poning.me/tags/Pwnable-kr/"/>
     
   </entry>
   
   <entry>
     <title>Boston Key Party CTF 2016: unholy (reversing 4)</title>
-    <link href="http://poning.me/2016/03/10/unholy/"/>
-    <id>http://poning.me/2016/03/10/unholy/</id>
+    <link href="https://poning.me/2016/03/10/unholy/"/>
+    <id>https://poning.me/2016/03/10/unholy/</id>
     <published>2016-03-10T15:48:02.000Z</published>
     <updated>2017-03-11T06:06:44.000Z</updated>
     
@@ -569,25 +569,25 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="reverse" scheme="http://poning.me/tags/reverse/"/>
+      <category term="reverse" scheme="https://poning.me/tags/reverse/"/>
     
-      <category term="x86-64" scheme="http://poning.me/tags/x86-64/"/>
+      <category term="x86-64" scheme="https://poning.me/tags/x86-64/"/>
     
-      <category term="python" scheme="http://poning.me/tags/python/"/>
+      <category term="python" scheme="https://poning.me/tags/python/"/>
     
-      <category term="ruby" scheme="http://poning.me/tags/ruby/"/>
+      <category term="ruby" scheme="https://poning.me/tags/ruby/"/>
     
-      <category term="Boston Key Party CTF" scheme="http://poning.me/tags/Boston-Key-Party-CTF/"/>
+      <category term="Boston Key Party CTF" scheme="https://poning.me/tags/Boston-Key-Party-CTF/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: EquationSolver (exp 60)</title>
-    <link href="http://poning.me/2016/03/04/equationsolver/"/>
-    <id>http://poning.me/2016/03/04/equationsolver/</id>
+    <link href="https://poning.me/2016/03/04/equationsolver/"/>
+    <id>https://poning.me/2016/03/04/equationsolver/</id>
     <published>2016-03-04T07:58:39.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -611,21 +611,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
-      <category term="integer overflow" scheme="http://poning.me/tags/integer-overflow/"/>
+      <category term="integer overflow" scheme="https://poning.me/tags/integer-overflow/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: Ruby&#39;s count (exp 50)</title>
-    <link href="http://poning.me/2016/03/04/rubys-count/"/>
-    <id>http://poning.me/2016/03/04/rubys-count/</id>
+    <link href="https://poning.me/2016/03/04/rubys-count/"/>
+    <id>https://poning.me/2016/03/04/rubys-count/</id>
     <published>2016-03-04T02:22:26.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -653,21 +653,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="pwn" scheme="http://poning.me/tags/pwn/"/>
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
-      <category term="regex" scheme="http://poning.me/tags/regex/"/>
+      <category term="regex" scheme="https://poning.me/tags/regex/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: A numbers game II (code 70)</title>
-    <link href="http://poning.me/2016/03/03/a-numbers-game-ii/"/>
-    <id>http://poning.me/2016/03/03/a-numbers-game-ii/</id>
+    <link href="https://poning.me/2016/03/03/a-numbers-game-ii/"/>
+    <id>https://poning.me/2016/03/03/a-numbers-game-ii/</id>
     <published>2016-03-03T14:23:14.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -700,19 +700,19 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="code" scheme="http://poning.me/tags/code/"/>
+      <category term="code" scheme="https://poning.me/tags/code/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: It&#39;s Prime Time! (code 60)</title>
-    <link href="http://poning.me/2016/03/03/its-prime-time/"/>
-    <id>http://poning.me/2016/03/03/its-prime-time/</id>
+    <link href="https://poning.me/2016/03/03/its-prime-time/"/>
+    <id>https://poning.me/2016/03/03/its-prime-time/</id>
     <published>2016-03-03T05:35:27.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -735,19 +735,19 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="code" scheme="http://poning.me/tags/code/"/>
+      <category term="code" scheme="https://poning.me/tags/code/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: A numbers game (code 50)</title>
-    <link href="http://poning.me/2016/03/03/a-numbers-game/"/>
-    <id>http://poning.me/2016/03/03/a-numbers-game/</id>
+    <link href="https://poning.me/2016/03/03/a-numbers-game/"/>
+    <id>https://poning.me/2016/03/03/a-numbers-game/</id>
     <published>2016-03-03T01:35:14.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -770,19 +770,19 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="code" scheme="http://poning.me/tags/code/"/>
+      <category term="code" scheme="https://poning.me/tags/code/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: Bank (crypto 90)</title>
-    <link href="http://poning.me/2016/03/02/bank/"/>
-    <id>http://poning.me/2016/03/02/bank/</id>
+    <link href="https://poning.me/2016/03/02/bank/"/>
+    <id>https://poning.me/2016/03/02/bank/</id>
     <published>2016-03-02T06:59:42.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -804,21 +804,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="crypto" scheme="http://poning.me/tags/crypto/"/>
+      <category term="crypto" scheme="https://poning.me/tags/crypto/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
-      <category term="xor" scheme="http://poning.me/tags/xor/"/>
+      <category term="xor" scheme="https://poning.me/tags/xor/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: Oh Bob! (crypto 60)</title>
-    <link href="http://poning.me/2016/03/01/oh-bob/"/>
-    <id>http://poning.me/2016/03/01/oh-bob/</id>
+    <link href="https://poning.me/2016/03/01/oh-bob/"/>
+    <id>https://poning.me/2016/03/01/oh-bob/</id>
     <published>2016-03-01T01:08:18.000Z</published>
     <updated>2016-08-04T02:56:07.000Z</updated>
     
@@ -840,21 +840,21 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="crypto" scheme="http://poning.me/tags/crypto/"/>
+      <category term="crypto" scheme="https://poning.me/tags/crypto/"/>
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
-      <category term="RSA" scheme="http://poning.me/tags/RSA/"/>
+      <category term="RSA" scheme="https://poning.me/tags/RSA/"/>
     
   </entry>
   
   <entry>
     <title>Internetwache CTF 2016: Eso Tape (rev 80)</title>
-    <link href="http://poning.me/2016/02/29/eso-tape/"/>
-    <id>http://poning.me/2016/02/29/eso-tape/</id>
+    <link href="https://poning.me/2016/02/29/eso-tape/"/>
+    <id>https://poning.me/2016/02/29/eso-tape/</id>
     <published>2016-02-29T06:50:05.000Z</published>
     <updated>2017-03-11T06:06:16.000Z</updated>
     
@@ -878,14 +878,14 @@
     
     </summary>
     
-      <category term="writeup" scheme="http://poning.me/categories/writeup/"/>
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
     
     
-      <category term="Internetwache CTF" scheme="http://poning.me/tags/Internetwache-CTF/"/>
+      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
-      <category term="reverse" scheme="http://poning.me/tags/reverse/"/>
+      <category term="reverse" scheme="https://poning.me/tags/reverse/"/>
     
-      <category term="esoteric" scheme="http://poning.me/tags/esoteric/"/>
+      <category term="esoteric" scheme="https://poning.me/tags/esoteric/"/>
     
   </entry>
   
