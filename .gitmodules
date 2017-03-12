@@ -1,0 +1,4 @@
+[submodule "themes/very-simple2"]
+	path = themes/very-simple2
+	url = git@github.com:Isaac0616/very-simple.git
+	branch = my-version
