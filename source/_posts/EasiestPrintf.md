@@ -37,13 +37,13 @@ For the second idea, `atexit` function pointers are encrypted, and this binary u
 
 Finally, the third idea works out. By searching `malloc` in `vfprintf.c`, it seems that we can trigger `malloc` and the following `free` if the width field of the format placeholder is large enough.
 
-```c
+{% codeblock vfprintf.c lang:c %}
 if (width >= WORK_BUFFER_SIZE - 32)
   {
     size_t needed = ((size_t) width + 32) * sizeof (CHAR_T);
     ...
     workstart = (CHAR_T *) malloc (needed);
-```
+{% endcodeblock %}
 
 Although it took me quite a while to come up with the solution, the final exploitation is short and straightforward.
 
